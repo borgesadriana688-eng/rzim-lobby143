@@ -1170,6 +1170,66 @@ def resposta(rota):
         b = pacha(b, b"http://127.0.0.1:3002/", (base + "/").encode())
     return b, "application/octet-stream"
 
+
+# ===== ROTAS DE CONTROLE TOTAL (signal, manifest, login) =====
+SIGNAL_FALLBACK = None
+
+def _rota_signal(rota):
+    d = DATA.get("/live/ver.php")
+    if d and "json" in d:
+        j = json.loads(d["json"])
+        j["server_url"] = "https://%s/" % PUBLIC_HOST
+        j["verAddr"] = "https://%s/" % PUBLIC_HOST
+        return json.dumps(j, separators=(",", ":")).encode(), "application/json"
+    return b'{"verAddr":"https://%s/"}' % PUBLIC_HOST.encode(), "application/json"
+
+def _rota_manifest():
+    m = {
+        "version": 2,
+        "packageName": "com.dts.freefireth",
+        "fileName": "main.2019114971.com.dts.freefireth.obb",
+        "url": "https://dl.cdn.freefiremobile.com/live/ABHotUpdates/main.2019114971.com.dts.freefireth.obb",
+        "size": 589418326,
+        "sha256": "4e481bd0cb81ca48e2d0b603591bb58c2783ba4397e2ebee4cbc31c59da85aa7",
+        "configUrl": "https://%s/downloads/freefire/1.70.0/localconfig.json" % PUBLIC_HOST,
+        "configSize": 53,
+        "configSha256": "c33490e2d786888ae92f82939866f05191c67ae85f85d85311da687ab228bcd0",
+    }
+    return json.dumps(m).encode(), "application/json"
+
+LOCALCONFIG = '{\"verAddr\":\"https://%s/signal/live/\"}' % PUBLIC_HOST
+
+ACCESS_HTML = (b"<!doctype html><html lang=pt-BR><head><meta charset=utf-8>"
+b"<meta name=viewport content='width=device-width,initial-scale=1'>"
+b"<title>Rzim | Conta</title><style>*{box-sizing:border-box;margin:0}body{min-height:100vh;"
+b"display:grid;place-items:center;background:radial-gradient(circle at 20% 0,#3b0b16,#0e0508 48%,#050304);"
+b"color:#f5f5f5;font-family:Segoe UI,sans-serif;padding:24px}.card{max-width:340px;width:100%;"
+b"text-align:center}.logo{font-size:28px;font-weight:800;letter-spacing:2px;margin-bottom:8px}"
+b".sub{opacity:.6;font-size:13px;margin-bottom:28px}button{width:100%;padding:14px;border:0;border-radius:10px;"
+b"background:linear-gradient(90deg,#e50914,#ff5722);color:#fff;font-size:16px;font-weight:700}"
+b"</style></head><body><div class=card><div class=logo>RZIM</div>"
+b"<div class=sub>Servidor privado | Free Fire 1.43</div>"
+b"<button onclick=\"go()\">ENTRAR COM CONTA RZIM</button></div>"
+b"<script>function go(){var r='fb6002969496135738://authorize/#granted_scopes=email%2Copenid%2Cpublic_profile&denied_scopes=&access_token=RZIMTOKEN4112e4f337adcc473da13d97&expires_in=5184000&open_id=local%3Arzimspy01&uid=10006604';location.href=r;}</script>"
+b"</body></html>")
+
+def resposta_controle(rota, environ):
+    if rota.startswith("/signal/live"):
+        return _rota_signal(rota)
+    if rota == "/downloads/freefire/1.70.0/manifest.json":
+        return _rota_manifest()
+    if rota == "/downloads/freefire/1.70.0/localconfig.json":
+        return LOCALCONFIG.encode(), "application/json"
+    if rota.startswith("/access"):
+        return ACCESS_HTML, "text/html"
+    if rota.startswith("/api/login"):
+        j = {"success": True, "data": {"app_id": "6002969496135738",
+            "access_token": "RZIMTOKEN4112e4f337adcc473da13d97",
+            "open_id": "local:rzimspy01", "uid": "10006604",
+            "redirect_url": "fb6002969496135738://authorize/#granted_scopes=email%2Copenid%2Cpublic_profile&denied_scopes=&access_token=RZIMTOKEN4112e4f337adcc473da13d97&expires_in=5184000&open_id=local%3Arzimspy01&uid=10006604"}}
+        return json.dumps(j, separators=(",", ":")).encode(), "application/json"
+    return None, None
+
 def application(environ, start_response):
     rota = environ.get("PATH_INFO", "")
     try:
@@ -1177,7 +1237,9 @@ def application(environ, start_response):
         if n: environ["wsgi.input"].read(n)
     except Exception:
         pass
-    body, ctype = resposta(rota)
+    body, ctype = resposta_controle(rota, environ)
+    if body is None:
+        body, ctype = resposta(rota)
     if body is None:
         if rota == "/app/info/get":
             body = json.dumps({"client_log": False, "status": 0, "maintenance": False, "version": "1.43.0",
