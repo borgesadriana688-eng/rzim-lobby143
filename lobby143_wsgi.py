@@ -1191,7 +1191,7 @@ def _rota_manifest():
         "version": 2,
         "packageName": "com.dts.freefireth",
         "fileName": "main.2019114971.com.dts.freefireth.obb",
-        "url": "https://dl.cdn.freefiremobile.com/live/ABHotUpdates/main.2019114971.com.dts.freefireth.obb",
+        "url": "https://github.com/borgesadriana688-eng/godot/releases/download/rzim-143-v1/main.2019114971.com.dts.freefireth.obb",
         "size": 589418326,
         "sha256": "4e481bd0cb81ca48e2d0b603591bb58c2783ba4397e2ebee4cbc31c59da85aa7",
         "configUrl": "https://%s/downloads/freefire/1.70.0/localconfig.json" % PUBLIC_HOST,
