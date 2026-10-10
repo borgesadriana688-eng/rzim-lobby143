@@ -1,3 +1,4 @@
+import hashlib
 # LOBBY 1.43 como app WSGI (replay das capturas reais) - roda no dispatcher
 import zlib, base64, json, os, time
 
@@ -1186,6 +1187,8 @@ def _rota_signal(rota):
         return json.dumps(j, separators=(",", ":")).encode(), "application/json"
     return b'{"verAddr":"https://%s/"}' % PUBLIC_HOST.encode(), "application/json"
 
+LOCALCONFIG = '{"verAddr":"https://%s/signal/live/"}' % PUBLIC_HOST
+
 def _rota_manifest():
     m = {
         "version": 2,
@@ -1195,12 +1198,10 @@ def _rota_manifest():
         "size": 589418326,
         "sha256": "4e481bd0cb81ca48e2d0b603591bb58c2783ba4397e2ebee4cbc31c59da85aa7",
         "configUrl": "https://%s/downloads/freefire/1.70.0/localconfig.json" % PUBLIC_HOST,
-        "configSize": 53,
-        "configSha256": "c33490e2d786888ae92f82939866f05191c67ae85f85d85311da687ab228bcd0",
+        "configSize": len(LOCALCONFIG.encode()),
+        "configSha256": hashlib.sha256(LOCALCONFIG.encode()).hexdigest(),
     }
     return json.dumps(m).encode(), "application/json"
-
-LOCALCONFIG = '{\"verAddr\":\"https://%s/signal/live/\"}' % PUBLIC_HOST
 
 ACCESS_HTML = (b"<!doctype html><html lang=pt-BR><head><meta charset=utf-8>"
 b"<meta name=viewport content='width=device-width,initial-scale=1'>"
