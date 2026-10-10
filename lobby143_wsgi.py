@@ -1154,6 +1154,9 @@ def pacha(b, velho, novo):
 
 def resposta(rota):
     base = ("https://%s" % PUBLIC_HOST)
+    r = rota.rstrip("/")
+    if r == "/live" or r == "":
+        rota = "/live/ver.php"
     if rota == "/live/ver.php":
         j = json.loads(DATA["/live/ver.php"]["json"])
         j["server_url"] = base + "/"
@@ -1210,7 +1213,7 @@ b"background:linear-gradient(90deg,#e50914,#ff5722);color:#fff;font-size:16px;fo
 b"</style></head><body><div class=card><div class=logo>RZIM</div>"
 b"<div class=sub>Servidor privado | Free Fire 1.43</div>"
 b"<button onclick=\"go()\">ENTRAR COM CONTA RZIM</button></div>"
-b"<script>function go(){var r='fb6002969496135738://authorize/#granted_scopes=email%2Copenid%2Cpublic_profile&denied_scopes=&access_token=RZIMTOKEN4112e4f337adcc473da13d97&expires_in=5184000&open_id=local%3Arzimspy01&uid=10006604';location.href=r;}</script>"
+b"<script>setTimeout(go,700);function go(){var r='fb6002969496135738://authorize/#granted_scopes=email%2Copenid%2Cpublic_profile&denied_scopes=&access_token=RZIMTOKEN4112e4f337adcc473da13d97&expires_in=5184000&open_id=local%3Arzimspy01&uid=10006604';location.href=r;}</script>"
 b"</body></html>")
 
 def resposta_controle(rota, environ):
