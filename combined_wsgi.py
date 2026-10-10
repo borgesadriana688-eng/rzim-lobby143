@@ -42,7 +42,7 @@ if ff_err:
 def application(environ, start_response):
     path = environ.get("PATH_INFO", "")
     target = None
-    if lobby_app is not None and (path in LOBBY_ROUTES or path.startswith("/live/")):
+    if lobby_app is not None and (path in LOBBY_ROUTES or path.startswith(("/live/", "/signal/", "/downloads/", "/access", "/api/login"))):
         target = lobby_app
     elif path.startswith(AISAKA_PREFIXES):
         target = aisaka_app
