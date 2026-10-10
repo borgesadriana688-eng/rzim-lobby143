@@ -19,7 +19,6 @@ AISAKA_PREFIXES = (
 )
 
 LOBBY_ROUTES = frozenset(['/ChangeClothes', '/EPVideoAdPortal', '/GetAccountLifeSeasonStats', '/GetAccountSubscriptions', '/GetBackpack', '/GetBingoRewardsInfo', '/GetDailyRankingReward', '/GetDiscountStore', '/GetEPInfo', '/GetEPSubscriptionBonusStatus', '/GetExchangeStore', '/GetFollowStreamerList', '/GetFreshActivityInfo', '/GetFriend', '/GetFriendIDs', '/GetFriendRequestList', '/GetGachaDesc', '/GetGachaInfo', '/GetGachaSpecialExchangeDesc', '/GetGiftRankDesc', '/GetGiftStore', '/GetGiftStoreDetails', '/GetInstallmentItems', '/GetInstallmentStore', '/GetLinkageActivityInfo', '/GetLoginData', '/GetMailList', '/GetManualAllMapRewardStates', '/GetManualAllWeaponRewardStates', '/GetManualCollectInfo', '/GetNewPlayerLevelUpTaskInfo', '/GetPetList', '/GetPlatformFriendIDs', '/GetPlatformFriends', '/GetPlatformProfile', '/GetPlayerPersonalShow', '/GetRandomClanList', '/GetRecommendedFriend', '/GetStore', '/GetSubscribeStore', '/GetTopupEventInfo', '/GetVeteranTaskDesc', '/LoginGetDesc', '/LoginGetSplash', '/MajorLogin', '/OpenTreasureBox', '/PurchaseGacha', '/SelectProfile', '/UnlockProfile', '/live/ver.php'])
-LOBBY_ROUTES = LOBBY_ROUTES | {"/app/info/get", "/app/feedback"}
 
 def load_app(module_name, attr="app"):
     try:
