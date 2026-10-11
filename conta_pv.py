@@ -1,5 +1,5 @@
 # Contas reais (registro/login) com a MESMA tela do pautavero. SQLite + PBKDF2 + captcha matematico assinado.
-import os, json, time, hmac, hashlib, base64, secrets, sqlite3, random, re, threading, urllib.request
+import os, sys, json, time, hmac, hashlib, base64, secrets, sqlite3, random, re, threading, urllib.request
 
 APP_ID = "6002969496135738"
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -26,8 +26,17 @@ CONTA_CHAVE = os.environ.get("CONTA_CHAVE", "")
 def _remote(acao, **campos):
     payload = json.dumps({"acao": acao, "chave": CONTA_CHAVE, **campos}).encode()
     req = urllib.request.Request(CONTA_URL, data=payload, headers={"Content-Type": "application/json", "User-Agent": "MontroyLobby/1.0"}, method="POST")
-    with urllib.request.urlopen(req, timeout=12) as r:
-        return json.loads(r.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=12) as r:
+            return json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        # 409 existe / 404 nao_existe vem com corpo JSON valido — devolver, nao estourar
+        corpo = e.read().decode()[:200]
+        try:
+            return json.loads(corpo)
+        except Exception:
+            raise
+
 
 def _cria_remoto(user, senha):
     salt = secrets.token_hex(16)
