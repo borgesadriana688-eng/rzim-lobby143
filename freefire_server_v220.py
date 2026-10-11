@@ -448,7 +448,32 @@ def friends_inapp():
 
 # --- LOGIN SOCIAL (stubs) ---
 @app.route('/oauth/token/facebook/exchange', methods=['POST'])
-def fb(): return jsonify({"code": 2017, "error": "not_supported"})
+def fb():
+    # MONTROY: o MSDK troca o token recebido via fbconnect:// (emitido por conta_pv)
+    # por um token Garena. Valida o token MONTROY e devolve o par de tokens.
+    ftok = request.form.get('facebook_access_token', '') or request.form.get('access_token', '')
+    uid = None
+    try:
+        import conta_pv as _cp
+        uid = _cp.token_valido(ftok)
+    except Exception as _e:
+        print("[fb-exchange] conta_pv indisponivel:", repr(_e))
+    if not uid:
+        return jsonify({"code": 1004, "error": "invalid_token"})
+    oid = str(uid)
+    nick = "Montroy%s" % oid[-4:]
+    get_player(oid, nick)
+    at = create_token(oid, nick, "oauth")
+    nr = create_refresh_token(oid, nick, "oauth")
+    return jsonify({
+        "access_token": at,
+        "refresh_token": nr,
+        "open_id": oid,
+        "expires_in": 2592000,
+        "expiry_time": now() + 2592000,
+        "platform": 3,
+        "token_type": "Bearer"
+    })
 @app.route('/oauth/token/google/exchange', methods=['POST'])
 def gg(): return jsonify({"code": 2017, "error": "not_supported"})
 @app.route('/oauth/token/line/exchange', methods=['POST'])
