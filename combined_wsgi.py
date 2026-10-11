@@ -39,10 +39,25 @@ if ff_err:
     print("[combined] AVISO: FF server nao importado:", ff_err.splitlines()[0], file=sys.stderr)
     ff_app = None
 
+try:
+    import conta_pv
+    conta_app = conta_pv.application
+except Exception as _e:
+    print("[combined] conta_pv nao importado:", _e, file=sys.stderr)
+    conta_app = None
+CONTA_ROTAS = ("/access", "/login", "/api/captcha", "/api/login", "/api/register")
+
 def application(environ, start_response):
+    import re as _re
+    globals()["__re"] = _re
     path = environ.get("PATH_INFO", "")
     target = None
-    if lobby_app is not None and (path == "/" or path in LOBBY_ROUTES or path.startswith(("/live/", "/signal/", "/downloads/", "/access", "/api/login"))):
+    if path.startswith("/ff143"):
+        path = path[6:]
+    if conta_app is not None and path in CONTA_ROTAS:
+        environ["PATH_INFO"] = path
+        return conta_app(environ, start_response)
+    if lobby_app is not None and (path == "/" or path in LOBBY_ROUTES or path.startswith(("/live/", "/signal/", "/downloads/", "/access", "/api/login")) or path.startswith("/app/")):
         target = lobby_app
     elif path.startswith(AISAKA_PREFIXES):
         target = aisaka_app
