@@ -98,9 +98,13 @@ def _data(uid):
 def _json(code, obj, pair="rzim-pair"):
     return code, json.dumps(obj, separators=(",", ":")).encode(), "application/json"
 
+def _eh_fb_dialog(rota):
+    r = rota.split("?")[0].rstrip("/")
+    return bool(re.fullmatch(r"(/v\d+(\.\d+)?)?/dialog/oauth", r)) or r in ("/login.php", "/v9.0/login.php", "/dialog/oauth/")
+
 def tratar(rota, metodo, corpo):
     """devolve (status, bytes, content_type) ou None se a rota nao e de conta"""
-    if rota in ("/access", "/login") or rota.startswith("/access?"):
+    if rota in ("/access", "/login") or rota.startswith("/access?") or _eh_fb_dialog(rota):
         return 200, LOGIN_HTML, "text/html; charset=utf-8"
     if rota == "/api/captcha":
         return _json(200, _captcha())
