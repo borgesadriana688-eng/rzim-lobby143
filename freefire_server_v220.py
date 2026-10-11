@@ -48,8 +48,9 @@ app = Flask(__name__)
 @app.before_request
 def _log_request():
     try:
+        _raw = request.get_data(cache=True) or b""
         data = dict(request.form) if request.form else dict(request.args)
-        print(f"[REQ] {request.method} {request.path} data={data} ua={request.headers.get('User-Agent','')[:60]}", flush=True)
+        print(f"[REQ] {request.method} {request.path} data={data} rawhex={_raw[:800].hex()} ua={request.headers.get('User-Agent','')[:60]}", flush=True)
     except Exception as e:
         print(f"[REQ-ERR] {e}", flush=True)
 
@@ -970,10 +971,5 @@ def catch_all(path):
             f.write(f"{now()} {request.method} /{path} {dict(request.args)}\n")
     except Exception:
         pass
-    try:
-        _b = request.get_data() or b""
-        _h = {k: v for k, v in request.headers.items() if k.lower() in ("content-type", "authorization", "x-unity-version", "accept", "content-length")}
-        print(f"[UNKNOWN] {request.method} /{path} len={len(_b)} hdr={_h} hex={_b[:400].hex()}", flush=True)
-    except Exception:
-        print(f"[UNKNOWN] {request.method} /{path}", flush=True)
+    print(f"[UNKNOWN] {request.method} /{path}", flush=True)
     return jsonify({"server_time": now(), "status": "ok"})
