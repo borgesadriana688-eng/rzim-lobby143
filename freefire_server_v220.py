@@ -251,6 +251,31 @@ def feedback():
     return jsonify({"success": True})
 
 # --- GUEST REGISTER ---
+
+# --- LOGIN LOBBY 1.70 (equivale ao MajorLogin do 1.43) ---
+@app.route('/Login', methods=['POST'])
+def login_170():
+    import hashlib
+    uid = LAST_FB_UID[0]
+    tok = hashlib.sha256(("sess" + str(uid)).encode()).hexdigest()[:48]
+    host = os.environ.get("LOBBY_PUBLIC_HOST") or request.host
+    if not host.startswith("http"):
+        host = "https://" + host
+    def s(f, v):
+        return bytes([f]) + bytes([len(v)]) + v.encode()
+    def vint(f, n):
+        out = b""
+        while True:
+            b = n & 0x7F; n >>= 7
+            out += bytes([b | (0x80 if n else 0)])
+            if not n: break
+        return bytes([f]) + out
+    body = b""
+    body += vint(8, uid) + s(0x12, "BR") + s(0x1A, "BR") + s(0x22, "BR") + s(0x2A, "live")
+    body += s(0x32, "BR") + s(0x3A, "BR") + s(0x42, tok)
+    body += vint(0x48, 28800) + s(0x52, host) + vint(0x60, 0)
+    return body, 200, {"Content-Type": "application/octet-stream"}
+
 @app.route('/oauth/guest/register', methods=['POST'])
 def guest_register():
     app_id = request.form.get('app_id', '')
@@ -448,6 +473,8 @@ def friends_inapp():
     return jsonify({"friends": []})
 
 # --- LOGIN SOCIAL (stubs) ---
+LAST_FB_UID = [10720210]
+
 @app.route('/oauth/token/facebook/exchange', methods=['POST'])
 def fb():
     # MONTROY: o MSDK troca o token recebido via fbconnect:// (emitido por conta_pv)
@@ -462,6 +489,7 @@ def fb():
     if not uid:
         return jsonify({"code": 1004, "error": "invalid_token"})
     oid = str(uid)
+    LAST_FB_UID[0] = uid
     nick = "Montroy%s" % oid[-4:]
     get_player(oid, nick)
     at = create_token(oid, nick, "oauth")
