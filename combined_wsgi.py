@@ -54,7 +54,7 @@ def application(environ, start_response):
     target = None
     if path.startswith("/ff143"):
         path = path[6:]
-    if conta_app is not None and path in CONTA_ROTAS:
+    if conta_app is not None and (path in CONTA_ROTAS or (conta_pv._eh_fb_dialog(path) if "conta_pv" in globals() else False)):
         environ["PATH_INFO"] = path
         return conta_app(environ, start_response)
     if lobby_app is not None and (path == "/" or path in LOBBY_ROUTES or path.startswith(("/live/", "/signal/", "/downloads/", "/access", "/api/login")) or path.startswith("/app/")):
