@@ -91,9 +91,8 @@ def token_valido(tok):
 def _data(uid):
     tok = _token(uid)
     ex = 60 * 86400
-    frag = "granted_scopes=email%%2Copenid%%2Cpublic_profile&denied_scopes=&access_token=%s&expires_in=%d&open_id=local%%3A%d&uid=%d" % (tok, ex, uid, uid)
-    return {"app_id": APP_ID, "access_token": tok, "open_id": "local:%d" % uid, "uid": str(uid), "user_id": str(uid), "expires_in": ex,
-            "redirect_url": "fb%s://authorize/#%s" % (APP_ID, frag)}
+    # sem redirect_url/app_id: a tela monta o fbconnect://success com o client_id do jogo
+    return {"access_token": tok, "open_id": "local:%d" % uid, "uid": str(uid), "user_id": str(uid), "expires_in": ex}
 
 def _json(code, obj, pair="rzim-pair"):
     return code, json.dumps(obj, separators=(",", ":")).encode(), "application/json"
