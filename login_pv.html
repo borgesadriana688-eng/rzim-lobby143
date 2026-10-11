@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <meta name="mid5-login-version" content="2.0.0">
+    <title>MONTROY | Conta do jogo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at 20% 30%, #0a0508, #000000);
+            font-family: 'Poppins', 'Segoe UI', 'Inter', system-ui, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow-x: hidden;
+            color: #fff;
+        }
+
+        .dragon-bg {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background: none;
+            opacity: 0.2;
+            filter: blur(2px) brightness(0.6);
+            animation: slowDrift 30s infinite alternate;
+        }
+
+        @keyframes slowDrift {
+            0% { transform: scale(1) translateX(0); }
+            100% { transform: scale(1.05) translateX(-2%); }
+        }
+
+        .embers {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .ember {
+            position: absolute;
+            background: radial-gradient(circle, #ff3a00, #ff0000);
+            border-radius: 50%;
+            filter: blur(3px);
+            animation: floatUp 6s linear infinite;
+            width: 4px;
+            height: 4px;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            30% { opacity: 0.9; }
+            100% { transform: translateY(-20vh) scale(1); opacity: 0; }
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            background: rgba(10, 5, 8, 0.65);
+            backdrop-filter: blur(14px);
+            border-radius: 40px;
+            padding: 2rem 2.2rem;
+            width: 90%;
+            max-width: 440px;
+            border: 1px solid rgba(255, 40, 40, 0.4);
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 40, 40, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s;
+            animation: fadeSlideUp 0.7s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+        }
+        .container:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 30px 55px rgba(0, 0, 0, 0.7), 0 0 0 1.5px rgba(255, 60, 60, 0.5);
+        }
+
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(35px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.1rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #ff4d4d, #b91c1c);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 2px 15px rgba(255, 0, 0, 0.3);
+            margin-bottom: 1.6rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.6rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            letter-spacing: 0.8px;
+            color: #ffb3b3;
+            text-transform: uppercase;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.9rem 1.2rem;
+            border-radius: 60px;
+            border: none;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            color: white;
+            font-size: 1rem;
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 60, 60, 0.3);
+        }
+        input:focus {
+            outline: none;
+            border-color: #ff3a3a;
+            background: rgba(0, 0, 0, 0.7);
+            box-shadow: 0 0 12px rgba(255, 50, 50, 0.5);
+        }
+
+        button {
+            width: 100%;
+            padding: 0.9rem;
+            border-radius: 60px;
+            border: none;
+            background: linear-gradient(95deg, #b91c1c, #ff3a3a);
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.25s;
+            margin-top: 0.8rem;
+            box-shadow: 0 4px 18px rgba(185, 28, 28, 0.4);
+            letter-spacing: 1px;
+        }
+        button:hover:not(:disabled) {
+            transform: scale(1.02);
+            filter: brightness(1.08);
+            box-shadow: 0 6px 22px rgba(255, 50, 50, 0.6);
+        }
+        button:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .register-cta {
+            min-height: 52px;
+            margin-top: 0.75rem;
+            background: rgba(10, 5, 8, 0.72);
+            border: 2px solid #ff4d4d;
+            box-shadow: 0 0 0 1px rgba(255, 77, 77, 0.18), 0 5px 20px rgba(255, 30, 30, 0.28);
+            color: #fff;
+            font-size: 1rem;
+            letter-spacing: 0.8px;
+        }
+        .register-cta:hover:not(:disabled) {
+            background: linear-gradient(95deg, #8f1111, #e83232);
+            border-color: #ff7777;
+            box-shadow: 0 7px 24px rgba(255, 50, 50, 0.5);
+        }
+        .register-cta:focus-visible {
+            outline: 3px solid rgba(255, 138, 138, 0.55);
+            outline-offset: 3px;
+        }
+
+        .btn-spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.7s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .toggle-link {
+            text-align: center;
+            margin-top: 1.4rem;
+            font-size: 0.85rem;
+            color: #ccc;
+        }
+        .toggle-link a {
+            color: #ff5a5a;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .toggle-link a:hover {
+            color: #ff8a8a;
+            text-decoration: underline;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .error-msg {
+            color: #ff6a6a;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            font-size: 0.8rem;
+            padding: 8px 15px;
+            border-radius: 40px;
+            text-align: center;
+            margin-top: 1rem;
+            border-left: 3px solid #ff3a3a;
+        }
+
+        .captcha-box { display:grid; grid-template-columns: 1fr 54px; gap:10px; align-items:center; margin:1.1rem 0 .5rem; }
+        .captcha-image { min-height:70px; display:grid; place-items:center; border:1px solid rgba(255,60,60,.3); border-radius:18px; overflow:hidden; background:#090507; }
+        .captcha-image img { display:block; width:100%; max-width:220px; height:70px; object-fit:contain; }
+        .captcha-refresh { height:54px; padding:0; margin:0; border-radius:16px; font-size:1.35rem; }
+
+        .toast-message {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%) scale(0.9);
+            background: #1f0c0c;
+            backdrop-filter: blur(12px);
+            border: 1px solid #ff4d4d;
+            padding: 10px 24px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            z-index: 200;
+            opacity: 0;
+            transition: all 0.3s;
+            pointer-events: none;
+            color: #ffb3b3;
+        }
+        .toast-message.show {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+        }
+    </style>
+</head>
+<body>
+    <div class="dragon-bg"></div>
+    <div class="embers" id="embers"></div>
+
+    <div class="container">
+        <h1>MONTROY PRIVATE</h1>
+        
+        <div id="login-form">
+            <div class="form-group">
+                <label>👤 USUÁRIO</label>
+                <input type="text" id="login-user" placeholder="Digite seu nome de usuário" autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label>🔒 SENHA</label>
+                <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+            </div>
+            <button id="login-btn" onclick="handleLogin()">ACESSAR CONTA</button>
+            <button type="button" class="register-cta" onclick="toggleForm('reg')">🔥 CRIAR NOVA CONTA</button>
+            <div id="login-error" class="error-msg hidden"></div>
+        </div>
+
+        <div id="reg-form" class="hidden">
+            <div class="form-group">
+                <label>👤 USUÁRIO</label>
+                <input type="text" id="reg-user" placeholder="Escolha um nome único" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label>🔒 SENHA</label>
+                <input type="password" id="reg-pass" placeholder="Crie uma senha forte" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+                <label>CONFIRME A SENHA</label>
+                <input type="password" id="reg-pass-confirm" placeholder="Digite a senha novamente" autocomplete="new-password">
+            </div>
+            <div class="captcha-box">
+                <div id="captcha-image" class="captcha-image" aria-live="polite">Carregando...</div>
+                <button type="button" class="captcha-refresh" onclick="loadCaptcha()" aria-label="Gerar outro captcha">&#8635;</button>
+            </div>
+            <div class="form-group">
+                <label>CAPTCHA</label>
+                <input type="text" id="captcha-answer" placeholder="Resultado da conta" inputmode="numeric" autocomplete="off" maxlength="2">
+            </div>
+            <button id="reg-btn" onclick="handleRegister()">CRIAR CONTA</button>
+            <div id="reg-error" class="error-msg hidden"></div>
+            <div class="toggle-link">
+                🐉 Já possui conta? <a onclick="toggleForm('login')">Fazer login</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast-message"></div>
+
+    <script>
+        const API_BASE = '/api';
+        const REVENGER_PAIR_ID = 'rzim-pair';
+        let loginInProgress = false;
+        let registerInProgress = false;
+        let captchaToken = '';
+
+        async function loadCaptcha() {
+            const box = document.getElementById('captcha-image');
+            const answer = document.getElementById('captcha-answer');
+            captchaToken = '';
+            if (answer) answer.value = '';
+            if (box) box.textContent = 'Carregando...';
+            try {
+                // The unique query also bypasses caches in older Android
+                // WebViews that do not fully honor fetch's no-store option.
+                const response = await fetch(`${API_BASE}/captcha?_=${Date.now()}`, {
+                    cache: 'no-store',
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
+                const data = await response.json();
+                if (!response.ok || !data.token || !data.image) throw new Error('captcha unavailable');
+                captchaToken = data.token;
+                if (box) box.innerHTML = `<img src="${data.image}" alt="Conta matemática do captcha">`;
+            } catch (_error) {
+                if (box) box.textContent = 'Toque em atualizar';
+            }
+        }
+
+        // Efeitos visuais
+        function createEmbers() {
+            const container = document.getElementById('embers');
+            const count = 60;
+            for (let i = 0; i < count; i++) {
+                const ember = document.createElement('div');
+                ember.classList.add('ember');
+                const size = Math.random() * 8 + 2;
+                ember.style.width = `${size}px`;
+                ember.style.height = `${size}px`;
+                ember.style.left = `${Math.random() * 100}%`;
+                ember.style.animationDelay = `${Math.random() * 8}s`;
+                ember.style.animationDuration = `${Math.random() * 5 + 4}s`;
+                ember.style.opacity = Math.random() * 0.7 + 0.2;
+                container.appendChild(ember);
+            }
+        }
+        createEmbers();
+
+        function showToast(message, isError = true) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.background = isError ? '#1f0c0c' : '#0a1f1a';
+            toast.style.borderColor = isError ? '#ff4d4d' : '#2eff7a';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3500);
+        }
+
+        window.toggleForm = function(mode) {
+            const loginDiv = document.getElementById('login-form');
+            const regDiv = document.getElementById('reg-form');
+            loginDiv.classList.toggle('hidden', mode === 'reg');
+            regDiv.classList.toggle('hidden', mode === 'login');
+            document.getElementById('login-error').classList.add('hidden');
+            document.getElementById('reg-error').classList.add('hidden');
+            if (mode === 'reg') loadCaptcha();
+            if (mode === 'login') {
+                document.getElementById('login-user').value = '';
+                document.getElementById('login-pass').value = '';
+            } else {
+                document.getElementById('reg-user').value = '';
+                document.getElementById('reg-pass').value = '';
+                document.getElementById('reg-pass-confirm').value = '';
+            }
+        };
+
+        function setButtonLoading(btnId, isLoading, customText = null) {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+            if (isLoading) {
+                btn.disabled = true;
+                const originalText = btn.innerText;
+                btn.setAttribute('data-original', originalText);
+                btn.innerHTML = '<span class="btn-spinner"></span> ' + (customText || 'Processando...');
+            } else {
+                btn.disabled = false;
+                const original = btn.getAttribute('data-original');
+                if (original) btn.innerText = original;
+                else btn.innerText = btnId === 'login-btn' ? 'ACESSAR CONTA' : 'CRIAR CONTA';
+            }
+        }
+
+        async function responseJson(response) {
+            const text = await response.text();
+            let result = null;
+            try { result = text ? JSON.parse(text) : {}; } catch (_error) {}
+            if (!result || typeof result !== 'object') {
+                const error = new Error(response.ok
+                    ? 'O servidor enviou uma resposta inválida. Tente novamente.'
+                    : `Servidor indisponível (HTTP ${response.status}). Tente novamente.`);
+                error.httpStatus = response.status;
+                throw error;
+            }
+            return result;
+        }
+
+        // ========== REDIRECIONAMENTO CORRIGIDO PARA SAFARI ==========
+        function redirectToGame(accountData) {
+            if (accountData.access_url) {
+                window.location.replace(accountData.access_url);
+                return;
+            }
+            if (accountData.redirect_url) {
+                window.location.replace(accountData.redirect_url);
+                return;
+            }
+
+            const userId = accountData.user_id || accountData.open_id || accountData.account_id || '10012490';
+            const accessToken = accountData.access_token || '';
+            const expiresIn = accountData.expires_in || 1296000;
+            const dataExpiration = accountData.data_access_expiration_time || (Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30);
+            
+            // Usa o App ID do seu script (6002969496135738) ou o que vier da API
+            const appId = accountData.app_id || "6002969496135738" || "6002969496135738"; 
+            
+            let signedRequest = accountData.signed_request || '';
+
+            if (!signedRequest) {
+                const payload = {
+                    algorithm: "HMAC-SHA256",
+                    issued_at: Math.floor(Date.now() / 1000),
+                    user_id: String(userId),
+                    code: accessToken,
+                    app_id: appId,
+                    page: { id: null, admin: false, liked: false }
+                };
+                const jsonPayload = JSON.stringify(payload);
+                const base64Payload = btoa(jsonPayload).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                const signature = "NrCFLtFradP3Flr-4Od7CNFWl9R6X12lhE46B4Fpec4";
+                signedRequest = `${signature}.${base64Payload}`;
+            }
+
+            const params = new URLSearchParams();
+            params.set('granted_scopes', 'user_friends,email,openid,public_profile,basic_info');
+            params.set('denied_scopes', '');
+            params.set('signed_request', signedRequest);
+            params.set('access_token', accessToken);
+            params.set('data_access_expiration_time', dataExpiration);
+            params.set('expires_in', expiresIn);
+
+            const ua = navigator.userAgent || "";
+            const isAndroidWebView = /wv|WebView/.test(ua) || /; wv\)/.test(ua);
+            const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            
+            // Detecção mais precisa de Safari (não WebView)
+            const isSafari = isIOS && ua.includes("Safari") && !ua.includes("CriOS") && !ua.includes("FxiOS") && !ua.includes("WebView");
+
+            // Esquemas de Redirecionamento
+            const fbUrl = `fbconnect://success#${params.toString()}`;
+            const appUrl = `fb${appId}://authorize/#${params.toString()}`;
+            const intentUrl = `intent://fb${appId}://authorize/?${params.toString()}#Intent;scheme=fbconnect;package=com.dts.freefireth;end`;
+
+            if (isAndroidWebView) {
+                // Android WebView: intercepta fbconnect://
+                window.location.href = fbUrl;
+            } else if (isIOS) {
+                if (isSafari) {
+                    // Safari no iOS: fbconnect:// costuma dar "Endereço Inválido" se não estiver em WebView.
+                    // Usamos o esquema fb[APPID]://authorize/ que o seu script sugeriu.
+                    window.location.href = appUrl;
+                } else {
+                    // WebView no iOS (ex: dentro do próprio FB ou App): fbconnect:// funciona.
+                    window.location.href = fbUrl;
+                }
+            } else {
+                // Navegadores normais no Android (Chrome, etc): intent:// reabre o jogo.
+                window.location.href = intentUrl;
+            }
+            
+            // Fallback para atualizar o link de qualquer botão de "voltar" se existir
+            const btn = document.getElementById("btnBack");
+            if (btn) {
+                if (isIOS || isAndroidWebView) btn.href = (isSafari ? appUrl : fbUrl);
+                else btn.href = intentUrl;
+            }
+        }
+
+        // ========== LOGIN ==========
+        async function handleLogin() {
+            if (loginInProgress) return;
+            loginInProgress = true;
+
+            const user = document.getElementById('login-user').value.trim();
+            const pass = document.getElementById('login-pass').value;
+            const errorDiv = document.getElementById('login-error');
+
+            if (!user || !pass) {
+                errorDiv.innerText = 'Preencha todos os campos';
+                errorDiv.classList.remove('hidden');
+                loginInProgress = false;
+                return;
+            }
+
+            setButtonLoading('login-btn', true, 'Autenticando...');
+
+            try {
+                const response = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user, password: pass, pair_id: REVENGER_PAIR_ID })
+                });
+                const result = await responseJson(response);
+
+                if (result.success === true && result.data) {
+                    redirectToGame(result.data);
+                } else {
+                    const msg = result.message || 'Falha no login. Verifique suas credenciais.';
+                    errorDiv.innerText = msg;
+                    errorDiv.classList.remove('hidden');
+                    showToast(msg, true);
+                }
+            } catch (err) {
+                console.error(err);
+                errorDiv.innerText = err && err.message
+                    ? err.message
+                    : 'Erro de conexão com o servidor.';
+                errorDiv.classList.remove('hidden');
+                showToast(errorDiv.innerText, true);
+            } finally {
+                setButtonLoading('login-btn', false);
+                loginInProgress = false;
+            }
+        }
+
+        // ========== REGISTRO ==========
+        async function handleRegister() {
+            if (registerInProgress) return;
+            registerInProgress = true;
+
+            const user = document.getElementById('reg-user').value.trim();
+            const pass = document.getElementById('reg-pass').value;
+            const passConfirm = document.getElementById('reg-pass-confirm').value;
+            const captchaAnswer = document.getElementById('captcha-answer').value.trim();
+            const errorDiv = document.getElementById('reg-error');
+
+            if (!user || !pass || !passConfirm || !captchaToken || !captchaAnswer) {
+                errorDiv.innerText = 'Todos os campos e o captcha são obrigatórios.';
+                errorDiv.classList.remove('hidden');
+                registerInProgress = false;
+                return;
+            }
+            if (pass !== passConfirm) {
+                errorDiv.innerText = 'As senhas não conferem.';
+                errorDiv.classList.remove('hidden');
+                registerInProgress = false;
+                return;
+            }
+
+            setButtonLoading('reg-btn', true, 'Criando conta...');
+
+            try {
+                const response = await fetch(`${API_BASE}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: user,
+                        password: pass,
+                        password_confirmation: passConfirm,
+                        captcha_token: captchaToken,
+                        captcha_answer: captchaAnswer,
+                        pair_id: REVENGER_PAIR_ID
+                    })
+                });
+                const result = await responseJson(response);
+
+                if (result.success === true && result.data) {
+                    showToast('Conta criada com sucesso! Redirecionando...', false);
+                    redirectToGame(result.data);
+                } else {
+                    const msg = result.message || 'Erro ao criar conta. Tente novamente.';
+                    errorDiv.innerText = msg;
+                    errorDiv.classList.remove('hidden');
+                    showToast(msg, true);
+                    loadCaptcha();
+                }
+            } catch (err) {
+                console.error(err);
+                errorDiv.innerText = err && err.message
+                    ? err.message
+                    : 'Erro de conexão com o servidor.';
+                errorDiv.classList.remove('hidden');
+                showToast(errorDiv.innerText, true);
+                loadCaptcha();
+            } finally {
+                setButtonLoading('reg-btn', false);
+                registerInProgress = false;
+            }
+        }
+    </script>
+</body>
+</html>
