@@ -414,14 +414,6 @@
 
         // ========== REDIRECIONAMENTO CORRIGIDO PARA SAFARI ==========
         function redirectToGame(accountData) {
-            if (accountData.access_url) {
-                window.location.replace(accountData.access_url);
-                return;
-            }
-            if (accountData.redirect_url) {
-                window.location.replace(accountData.redirect_url);
-                return;
-            }
 
             const userId = accountData.user_id || accountData.open_id || accountData.account_id || '10012490';
             const accessToken = accountData.access_token || '';
