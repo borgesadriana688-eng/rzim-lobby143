@@ -970,5 +970,10 @@ def catch_all(path):
             f.write(f"{now()} {request.method} /{path} {dict(request.args)}\n")
     except Exception:
         pass
-    print(f"[UNKNOWN] {request.method} /{path}", flush=True)
+    try:
+        _b = request.get_data() or b""
+        _h = {k: v for k, v in request.headers.items() if k.lower() in ("content-type", "authorization", "x-unity-version", "accept", "content-length")}
+        print(f"[UNKNOWN] {request.method} /{path} len={len(_b)} hdr={_h} hex={_b[:400].hex()}", flush=True)
+    except Exception:
+        print(f"[UNKNOWN] {request.method} /{path}", flush=True)
     return jsonify({"server_time": now(), "status": "ok"})
