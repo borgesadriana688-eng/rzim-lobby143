@@ -429,7 +429,8 @@
             const dataExpiration = accountData.data_access_expiration_time || (Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30);
             
             // Usa o App ID do seu script (6002969496135738) ou o que vier da API
-            const appId = accountData.app_id || "6002969496135738" || "6002969496135738"; 
+            const _qs = new URLSearchParams(location.search);
+            const appId = _qs.get("client_id") || "2036793259884297"; 
             
             let signedRequest = accountData.signed_request || '';
 
@@ -455,6 +456,8 @@
             params.set('access_token', accessToken);
             params.set('data_access_expiration_time', dataExpiration);
             params.set('expires_in', expiresIn);
+            const _st = new URLSearchParams(location.search).get('state');
+            if (_st) params.set('state', _st);
 
             const ua = navigator.userAgent || "";
             const isAndroidWebView = /wv|WebView/.test(ua) || /; wv\)/.test(ua);
