@@ -116,7 +116,10 @@ def tratar(rota, metodo, corpo):
             return _json(400, {"success": False, "message": "As senhas não conferem.", "pair_id": "rzim-pair"})
         try:
             r = _cria_remoto(user, senha)
-        except Exception:
+        except Exception as _e:
+            import traceback as _tb
+            print("[conta] FALHA remoto registro:", repr(_e), file=sys.stderr)
+            _tb.print_exc()
             r = None
         if r == "existe":
             return _json(409, {"success": False, "message": "Esse usuário já existe.", "pair_id": "rzim-pair"})
@@ -137,7 +140,8 @@ def tratar(rota, metodo, corpo):
     # login: banco permanente primeiro
     try:
         achou = _busca_remoto(user)
-    except Exception:
+    except Exception as _e:
+        print("[conta] FALHA remoto login:", repr(_e), file=sys.stderr)
         achou = None
     if achou:
         uid, salt, hh = achou
