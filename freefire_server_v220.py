@@ -1000,4 +1000,7 @@ def catch_all(path):
     except Exception:
         pass
     print(f"[UNKNOWN] {request.method} /{path}", flush=True)
+    # Rotas do lobby 1.70 (CamelCase, protobuf): corpo vazio = mensagem protobuf vazia valida
+    if path and path[0].isupper() and "/" not in path:
+        return b"", 200, {"Content-Type": "application/octet-stream"}
     return jsonify({"server_time": now(), "status": "ok"})
