@@ -1319,6 +1319,17 @@ def _personal_show(base_resp):
     except Exception:
         return base_resp
 
+
+def _perfil_resp(uid, unlock=False):
+    """SelectProfile/UnlockProfile: 0a24 [08 <uid> 10 01 18 05 22 10 <4 ids de skin> 2a 05 ...] com o id do jogador logado."""
+    def v(n): return _wv(n)
+    skins = bytes.fromhex("c091e6608096a3618084af5f8084af5f")
+    tail = bytes.fromhex("2a050800109e113001") if not unlock else bytes.fromhex("2a05080010e6123000")
+    inner = b"\x08" + v(uid) + b"\x10\x01\x18\x05\x22\x10" + skins + tail
+    return b"\x0a" + v(len(inner)) + inner
+
+PLAYER_UID = 10000063
+
 WELCOME_MSG = "BEM VINDO AO MONTROY DESENVOLVIDO POR BRAYAN"
 
 def application(environ, start_response):
@@ -1333,7 +1344,11 @@ def application(environ, start_response):
         b = _splash_montroy()
         start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
         return [b]
-    if rota in ("/ChangeClothes", "/SelectProfile", "/GetBackpack", "/GetPlayerPersonalShow"):
+    if rota in ("/SelectProfile", "/UnlockProfile"):
+        b = _perfil_resp(PLAYER_UID, unlock=(rota == "/UnlockProfile"))
+        start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
+        return [b]
+    if rota in ("/ChangeClothes", "/GetBackpack", "/GetPlayerPersonalShow"):
         print("[BODY] %s len=%d hex=%s" % (rota, len(_reqbody), _reqbody[:300].hex()), flush=True)
     if rota == "/ChangeClothes":
         pe = _parse_equip(_reqbody)
