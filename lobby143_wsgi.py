@@ -1333,6 +1333,8 @@ def application(environ, start_response):
         b = _splash_montroy()
         start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
         return [b]
+    if rota in ("/ChangeClothes", "/SelectProfile", "/GetBackpack", "/GetPlayerPersonalShow"):
+        print("[BODY] %s len=%d hex=%s" % (rota, len(_reqbody), _reqbody[:300].hex()), flush=True)
     if rota == "/ChangeClothes":
         pe = _parse_equip(_reqbody)
         if pe:
