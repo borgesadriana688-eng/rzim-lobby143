@@ -1234,16 +1234,120 @@ def resposta_controle(rota, environ):
         return json.dumps(j, separators=(",", ":")).encode(), "application/json"
     return None, None
 
-def application(environ, start_response):
-    rota = environ.get("PATH_INFO", "")
+
+# ===== MONTROY: look equipado + splash proprio =====
+import threading as _th
+_LOOK = {}          # uid -> [ids equipados]
+_LOOK_LOCK = _th.Lock()
+
+def _rv(b, i):
+    v = 0; sh = 0
+    while i < len(b):
+        x = b[i]; i += 1
+        v |= (x & 0x7f) << sh; sh += 7
+        if not x & 0x80: break
+    return v, i
+
+def _wv(n):
+    out = b""
+    while True:
+        b = n & 0x7F; n >>= 7
+        out += bytes([b | (0x80 if n else 0)])
+        if not n: break
+    return out
+
+def _parse_equip(body):
+    """pedido ChangeClothes: f1=uid, f2=ids empacotados, f3=slot. Retorna (uid, ids, slot) ou None."""
     try:
-        n = int(environ.get("CONTENT_LENGTH") or 0)
-        if n: environ["wsgi.input"].read(n)
+        i = 0; uid = None; ids = []; slot = 5
+        while i < len(body):
+            tag, i = _rv(body, i)
+            fn, wt = tag >> 3, tag & 7
+            if wt == 0:
+                v, i = _rv(body, i)
+                if fn == 1: uid = v
+                elif fn == 3: slot = v
+            elif wt == 2:
+                ln, i = _rv(body, i)
+                data = body[i:i+ln]; i += ln
+                if fn == 2:
+                    j = 0
+                    while j < len(data):
+                        v, j = _rv(data, j); ids.append(v)
+            else:
+                return None
+        if uid and ids: return uid, ids, slot
     except Exception:
         pass
+    return None
+
+def _build_equip_resp(uid, ids, slot):
+    packed = b"".join(_wv(x) for x in ids)
+    inner = b"\x08" + _wv(uid) + b"\x10\x01\x18" + _wv(slot) + b"\x22" + _wv(len(packed)) + packed + b"\x2a\x05\x08\x00\x10\x9e\x11\x30\x01"
+    return b"\x0a" + _wv(len(inner)) + inner
+
+def _splash_montroy():
+    """LoginGetSplash: sem imagem de banner MID5 e sem link. Item de anuncio so com texto MONTROY."""
+    def s(f, v):
+        v = v.encode() if isinstance(v, str) else v
+        return bytes([f << 3 | 2]) + _wv(len(v)) + v
+    def n(f, v):
+        return bytes([f << 3]) + _wv(v)
+    item = (s(1, "pt-BR") + n(2, 0) + s(3, "MONTROY") + s(9, WELCOME_MSG)
+            + n(10, 1791506588) + n(11, 2147483000) + s(12, "BR") + n(13, 820000063) + n(14, 0) + n(19, 1))
+    wrap = s(1, item)
+    return s(1, wrap)
+
+
+def _personal_show(base_resp):
+    """GetPlayerPersonalShow: troca os 6 itens da captura pelo look salvo (se houver)."""
+    with _LOOK_LOCK:
+        if not _LOOK: return base_resp
+        uid, ids = next(reversed(list(_LOOK.items())))
+    try:
+        old_ids = [211000426, 211000300, 203000547, 204000111, 205000070, 203000204]
+        old = b"".join(_wv(x) for x in old_ids)
+        new = b"".join(_wv(x) for x in ids)
+        if len(old) != len(new) or old not in base_resp:
+            if old in base_resp:
+                # tamanho diferente: reconstroi so se o bloco empacotado tem prefixo de tamanho (0x18)
+                pre = bytes([len(old)]) + old
+                if pre in base_resp:
+                    return base_resp.replace(pre, bytes([len(new)]) + new)
+            return base_resp
+        return base_resp.replace(old, new)
+    except Exception:
+        return base_resp
+
+WELCOME_MSG = "BEM VINDO AO MONTROY DESENVOLVIDO POR BRAYAN"
+
+def application(environ, start_response):
+    rota = environ.get("PATH_INFO", "")
+    _reqbody = b""
+    try:
+        n = int(environ.get("CONTENT_LENGTH") or 0)
+        if n: _reqbody = environ["wsgi.input"].read(n)
+    except Exception:
+        pass
+    if rota == "/LoginGetSplash":
+        b = _splash_montroy()
+        start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
+        return [b]
+    if rota == "/ChangeClothes":
+        pe = _parse_equip(_reqbody)
+        if pe:
+            uid, ids, slot = pe
+            with _LOOK_LOCK:
+                _LOOK[uid] = ids
+            b = _build_equip_resp(uid, ids, slot)
+            print("[EQUIP] uid=%s ids=%s slot=%s" % (uid, ids, slot), flush=True)
+            start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
+            return [b]
     body, ctype = resposta_controle(rota, environ)
     if body is None:
         body, ctype = resposta(rota)
+        if rota == "/GetPlayerPersonalShow" and body is not None:
+            body = _personal_show(body)
     if body is None:
         if rota == "/app/info/get":
             body = json.dumps({"client_log": False, "status": 0, "maintenance": False, "version": "1.43.0",
