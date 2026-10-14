@@ -1138,6 +1138,13 @@ LOG_UNK = os.environ.get("UNK_LOG", "unknown_endpoints.log")
 # host publico que o cliente deve usar (sem esquema). Ex: brayan-roblox-production.up.railway.app
 PUBLIC_HOST = os.environ.get("LOBBY_PUBLIC_HOST") or os.environ.get("RENDER_EXTERNAL_URL", "http://localhost:8080").replace("https://", "")
 
+# FIX (endereco do servidor de jogo configuravel): o IP residencial muda com o tempo.
+# Antes era fixo "179.198.108.48:12100" dentro do blob do GetLoginData.
+# Configure GAME_PUBLIC_HOST / GAME_PUBLIC_PORT no painel do Render e redeploy.
+GAME_PUBLIC_HOST = os.environ.get("GAME_PUBLIC_HOST") or "179.198.108.48"
+GAME_PUBLIC_PORT = os.environ.get("GAME_PUBLIC_PORT") or "12100"
+GAME_PUBLIC_ADDR = "%s:%s" % (GAME_PUBLIC_HOST, GAME_PUBLIC_PORT)
+
 def pacha(b, velho, novo):
     if velho == novo:
         return b
@@ -1168,6 +1175,11 @@ def resposta(rota):
     if "json" in d:
         return d["json"].encode(), "application/json"
     b = base64.b64decode(d["resp_b64"])
+    # FIX: troca o endereco fixo do servidor de jogo pelo configurado no env
+    if GAME_PUBLIC_HOST != "179.198.108.48":
+        b = pacha(b, b"179.198.108.48:12100", GAME_PUBLIC_ADDR.encode())
+        b = pacha(b, b"179.198.108.48:12101", ("%s:12101" % GAME_PUBLIC_HOST).encode())
+        b = pacha(b, b"179.198.108.48", GAME_PUBLIC_HOST.encode())
     if rota == "/MajorLogin":
         b = pacha(b, b"http://127.0.0.1:000018002", base.encode())
     elif rota == "/GetLoginData":
@@ -1368,7 +1380,7 @@ def application(environ, start_response):
     if body is None:
         if rota == "/app/info/get":
             body = json.dumps({"client_log": False, "status": 0, "maintenance": False, "version": "1.43.0",
-                "game_server": "179.198.108.48:12100", "update_url": "",
+                "game_server": GAME_PUBLIC_ADDR, "update_url": "",
                 "notice": {"title": "Rzim Server", "content": "Lobby 1.43", "show": True}}, separators=(",", ":")).encode()
             ctype = "application/json"
         else:
