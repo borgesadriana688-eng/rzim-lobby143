@@ -1287,7 +1287,7 @@ def _parse_equip(body):
                     while j < len(data):
                         v, j = _rv(data, j); ids.append(v)
             else:
-                return None
+                break
         if uid and ids: return uid, ids, slot
     except Exception:
         pass
@@ -1367,6 +1367,28 @@ def _troca_uid_resp(resp, novo_uid):
         pass
     return resp
 
+
+# ---- AES: os pedidos do cliente 1.70 vem cifrados (chave do http_aes.txt) ----
+try:
+    from Crypto.Cipher import AES as _AES_C
+    _AES_KEY = bytes.fromhex("482a4a694f706a7a425e364a664c6e4a")
+    _AES_IV = bytes.fromhex("6b6e56705621264d79372371304d6948")
+except Exception:
+    _AES_C = None
+
+def _dec_req(body):
+    """Decifra pedido AES-CBC do cliente (perfil/skin). So se for bloco de 16
+    e o resultado parecer protobuf; senao devolve o corpo original."""
+    if not body or len(body) % 16 or _AES_C is None:
+        return body
+    try:
+        p = _AES_C.new(_AES_KEY, _AES_C.MODE_CBC, _AES_IV).decrypt(body)
+        if p and p[0] in (0x08, 0x0A, 0x10, 0x12, 0x18, 0x1A, 0x22, 0x2A):
+            return p
+    except Exception:
+        pass
+    return body
+
 def _perfil_replay_uid(rota):
     """FIX personagem invisivel: extrai o id do perfil da captura original. O commit 39a0493
     respondia SelectProfile/UnlockProfile com o id da CONTA (10000063), mas o perfil real do
@@ -1412,14 +1434,15 @@ def application(environ, start_response):
         if n: _reqbody = environ["wsgi.input"].read(n)
     except Exception:
         pass
+    _pb = _dec_req(_reqbody)
     if rota == "/LoginGetSplash":
         b = _splash_montroy()
         start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
         return [b]
     if rota in ("/ChangeClothes", "/GetBackpack", "/GetPlayerPersonalShow", "/SelectProfile", "/UnlockProfile"):
-        print("[BODY] %s len=%d hex=%s" % (rota, len(_reqbody), _reqbody[:300].hex()), flush=True)
+        print("[BODY] %s len=%d hex=%s dec=%s" % (rota, len(_reqbody), _reqbody[:300].hex(), _pb[:300].hex()), flush=True)
     if rota == "/ChangeClothes":
-        pe = _parse_equip(_reqbody)
+        pe = _parse_equip(_pb)
         if pe:
             uid, ids, slot = pe
             with _LOOK_LOCK:
@@ -1429,8 +1452,8 @@ def application(environ, start_response):
             start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
             return [b]
     if rota in ("/SelectProfile", "/UnlockProfile"):
-        req_uid = _req_uid(_reqbody)
-        print("[PERFIL] %s pedido uid=%s hex=%s" % (rota, req_uid, _reqbody.hex()), flush=True)
+        req_uid = _req_uid(_pb)
+        print("[PERFIL] %s pedido uid=%s hex=%s dec=%s" % (rota, req_uid, _reqbody.hex(), _pb.hex()), flush=True)
         cap_uid = _perfil_replay_uid(rota)
         if cap_uid:
             b = _perfil_capture_b(rota)
