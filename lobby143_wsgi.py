@@ -1332,6 +1332,41 @@ def _personal_show(base_resp):
         return base_resp
 
 
+
+def _req_uid(body):
+    """Extrai o campo 1 (uid) do pedido protobuf (SelectProfile/UnlockProfile)."""
+    try:
+        i = 0
+        while i < len(body):
+            tag, i = _rv(body, i)
+            fn, wt = tag >> 3, tag & 7
+            if wt == 0:
+                v, i = _rv(body, i)
+                if fn == 1:
+                    return v
+            elif wt == 2:
+                ln, i = _rv(body, i)
+                i += ln
+            else:
+                return None
+    except Exception:
+        pass
+    return None
+
+def _troca_uid_resp(resp, novo_uid):
+    """Troca o uid (campo 1 do item interno) da resposta de perfil pelo id que o jogo pediu.
+    Mantem todo o resto identico a captura (skins, slot, etc.)."""
+    try:
+        if resp and resp[0] == 0x0A:
+            _ln, i = _rv(resp, 1)
+            if i < len(resp) and resp[i] == 0x08:
+                _antigo, j = _rv(resp, i + 1)
+                novo = _wv(novo_uid)
+                return resp[:i + 1] + novo + resp[j:]
+    except Exception:
+        pass
+    return resp
+
 def _perfil_replay_uid(rota):
     """FIX personagem invisivel: extrai o id do perfil da captura original. O commit 39a0493
     respondia SelectProfile/UnlockProfile com o id da CONTA (10000063), mas o perfil real do
@@ -1349,6 +1384,12 @@ def _perfil_replay_uid(rota):
         pass
     return None
 
+
+
+def _perfil_capture_b(rota):
+    """Resposta crua da captura de uma rota de perfil."""
+    d = DATA.get(rota) or {}
+    return base64.b64decode(d.get("resp_b64", ""))
 
 def _perfil_resp(uid, unlock=False):
     """SelectProfile/UnlockProfile: fallback sintetico SOMENTE se a captura nao existir,
@@ -1375,7 +1416,7 @@ def application(environ, start_response):
         b = _splash_montroy()
         start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
         return [b]
-    if rota in ("/ChangeClothes", "/GetBackpack", "/GetPlayerPersonalShow"):
+    if rota in ("/ChangeClothes", "/GetBackpack", "/GetPlayerPersonalShow", "/SelectProfile", "/UnlockProfile"):
         print("[BODY] %s len=%d hex=%s" % (rota, len(_reqbody), _reqbody[:300].hex()), flush=True)
     if rota == "/ChangeClothes":
         pe = _parse_equip(_reqbody)
@@ -1385,6 +1426,21 @@ def application(environ, start_response):
                 _LOOK[uid] = ids
             b = _build_equip_resp(uid, ids, slot)
             print("[EQUIP] uid=%s ids=%s slot=%s" % (uid, ids, slot), flush=True)
+            start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
+            return [b]
+    if rota in ("/SelectProfile", "/UnlockProfile"):
+        req_uid = _req_uid(_reqbody)
+        print("[PERFIL] %s pedido uid=%s hex=%s" % (rota, req_uid, _reqbody.hex()), flush=True)
+        cap_uid = _perfil_replay_uid(rota)
+        if cap_uid:
+            b = _perfil_capture_b(rota)
+            if req_uid and req_uid != cap_uid:
+                b = _troca_uid_resp(b, req_uid)
+                print("[PERFIL] %s respondendo uid do JOGO (%s), captura era %s" % (rota, req_uid, cap_uid), flush=True)
+            start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
+            return [b]
+        if req_uid:
+            b = _perfil_resp(req_uid, unlock=(rota == "/UnlockProfile"))
             start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
             return [b]
     body, ctype = resposta_controle(rota, environ)
