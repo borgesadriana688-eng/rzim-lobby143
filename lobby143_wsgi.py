@@ -1389,6 +1389,44 @@ def _dec_req(body):
         pass
     return body
 
+
+# FIX personagem invisivel: o avatar selecionado no snapshot do GetBackpack
+# (102000015, da conta capturada) pode nao renderizar no cliente (recursos).
+# Troca por um avatar padrao garantido (102000004, o default do rzim-server).
+# Configuravel via env AVATAR_PUBLIC_ID.
+AVATAR_PUBLIC_ID = int(os.environ.get("AVATAR_PUBLIC_ID") or "102000004")
+_ANTIGO_AVATAR = b"\x08\x8f\xcb\xd1\x30"  # avatar_id 102000015
+
+def _troca_avatar_snapshot(b):
+    """Troca o avatar_id do selected_items (campo 2 do CSGetBackpackRes)."""
+    if AVATAR_PUBLIC_ID == 102000015 or not b:
+        return b
+    try:
+        i = 0
+        while i < len(b):
+            tag, j = _rv(b, i)
+            fn, wt = tag >> 3, tag & 7
+            if wt == 2:
+                ln, k = _rv(b, j)
+                fim = k + ln
+                if fn == 2:
+                    sel = b[k:fim]
+                    novo5 = b"\x08" + _wv(AVATAR_PUBLIC_ID)
+                    if sel[:5] == _ANTIGO_AVATAR and len(novo5) == 5:
+                        sel = novo5 + sel[5:]
+                        print("[AVATAR] selected_items: 102000015 -> %d" % AVATAR_PUBLIC_ID, flush=True)
+                        return b[:k] + sel + b[fim:]
+                    print("[AVATAR] selected_items inesperado: %s" % sel[:8].hex(), flush=True)
+                    return b
+                i = fim
+            elif wt == 0:
+                i = j
+            else:
+                break
+    except Exception:
+        pass
+    return b
+
 def _perfil_replay_uid(rota):
     """FIX personagem invisivel: extrai o id do perfil da captura original. O commit 39a0493
     respondia SelectProfile/UnlockProfile com o id da CONTA (10000063), mas o perfil real do
@@ -1471,6 +1509,8 @@ def application(environ, start_response):
         body, ctype = resposta(rota)
         if rota == "/GetPlayerPersonalShow" and body is not None:
             body = _personal_show(body)
+        if rota == "/GetBackpack" and body is not None:
+            body = _troca_avatar_snapshot(body)
     if body is None and rota in ("/SelectProfile", "/UnlockProfile"):
         uid = _perfil_replay_uid(rota)
         if uid:
