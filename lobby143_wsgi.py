@@ -1332,8 +1332,27 @@ def _personal_show(base_resp):
         return base_resp
 
 
+def _perfil_replay_uid(rota):
+    """FIX personagem invisivel: extrai o id do perfil da captura original. O commit 39a0493
+    respondia SelectProfile/UnlockProfile com o id da CONTA (10000063), mas o perfil real do
+    jogador nas capturas e 102000015 (SelectProfile/ChangeClothes) / 101000016 (UnlockProfile).
+    Id de perfil diferente = personagem invisivel, skin nao equipa, jogo pede relogin."""
+    try:
+        d = DATA.get(rota) or {}
+        b = base64.b64decode(d.get("resp_b64", ""))
+        if b and b[0] == 0x0A:
+            _ln, i = _rv(b, 1)
+            if i < len(b) and b[i] == 0x08:
+                uid, _ = _rv(b, i + 1)
+                return uid
+    except Exception:
+        pass
+    return None
+
+
 def _perfil_resp(uid, unlock=False):
-    """SelectProfile/UnlockProfile: 0a24 [08 <uid> 10 01 18 05 22 10 <4 ids de skin> 2a 05 ...] com o id do jogador logado."""
+    """SelectProfile/UnlockProfile: fallback sintetico SOMENTE se a captura nao existir,
+    sempre com o id do perfil do replay (nunca o id da conta)."""
     def v(n): return _wv(n)
     skins = bytes.fromhex("c091e6608096a3618084af5f8084af5f")
     tail = bytes.fromhex("2a050800109e113001") if not unlock else bytes.fromhex("2a05080010e6123000")
@@ -1356,10 +1375,6 @@ def application(environ, start_response):
         b = _splash_montroy()
         start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
         return [b]
-    if rota in ("/SelectProfile", "/UnlockProfile"):
-        b = _perfil_resp(PLAYER_UID, unlock=(rota == "/UnlockProfile"))
-        start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
-        return [b]
     if rota in ("/ChangeClothes", "/GetBackpack", "/GetPlayerPersonalShow"):
         print("[BODY] %s len=%d hex=%s" % (rota, len(_reqbody), _reqbody[:300].hex()), flush=True)
     if rota == "/ChangeClothes":
@@ -1377,6 +1392,12 @@ def application(environ, start_response):
         body, ctype = resposta(rota)
         if rota == "/GetPlayerPersonalShow" and body is not None:
             body = _personal_show(body)
+    if body is None and rota in ("/SelectProfile", "/UnlockProfile"):
+        uid = _perfil_replay_uid(rota)
+        if uid:
+            b = _perfil_resp(uid, unlock=(rota == "/UnlockProfile"))
+            start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
+            return [b]
     if body is None:
         if rota == "/app/info/get":
             body = json.dumps({"client_log": False, "status": 0, "maintenance": False, "version": "1.43.0",
