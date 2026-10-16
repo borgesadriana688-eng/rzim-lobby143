@@ -1473,7 +1473,7 @@ def _capture(route, req_hex="", dec_hex="", note=""):
         try:
             d = _jc.dumps({"route": str(route), "req_hex": str(req_hex), "dec_hex": str(dec_hex),
                           "note": str(note)}).encode()
-            r = _urc.Request(_CAPTURE_URL, data=d, headers={"Content-Type": "application/json"})
+            r = _urc.Request(_CAPTURE_URL, data=d, headers={"Content-Type": "application/json", "User-Agent": "lobby143-capture/1.0"})
             _urc.urlopen(r, timeout=5).read()
         except Exception:
             pass
