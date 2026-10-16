@@ -1133,6 +1133,19 @@ DATA_B64 = (
 )
 
 DATA = json.loads(zlib.decompress(base64.b64decode(DATA_B64)))
+# ===== NICK: substitui o nome da captura (mesmo comprimento, 10 bytes) =====
+def _patch_nicks():
+    for _r, _d in DATA.items():
+        if isinstance(_d, dict) and "resp_b64" in _d:
+            try:
+                _b = base64.b64decode(_d["resp_b64"])
+                if b"BLACN44444" in _b:
+                    _d["resp_b64"] = base64.b64encode(
+                        _b.replace(b"BLACN44444", b"MONTROY143")).decode()
+            except Exception:
+                pass
+_patch_nicks()
+
 GENERIC = base64.b64decode("SFRUUC8xLjEgMjAwIE9LDQpDb25uZWN0aW9uOiBjbG9zZQ0KQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9vY3RldC1zdHJlYW0NCkNvbnRlbnQtTGVuZ3RoOiAwDQpEYXRlOiBGcmksIDA5IE9jdCAyMDI2IDAwOjQzOjQ0IEdNVA0KDQo=")
 LOG_UNK = os.environ.get("UNK_LOG", "unknown_endpoints.log")
 # host publico que o cliente deve usar (sem esquema). Ex: brayan-roblox-production.up.railway.app
@@ -1167,7 +1180,7 @@ def resposta(rota):
         rota = "/live/ver.php"
     if rota == "/live/ver.php":
         j = json.loads(DATA["/live/ver.php"]["json"])
-        j["server_url"] = base + "/"
+        j = _patch_ver_json(j)
         return json.dumps(j, separators=(",", ":")).encode(), "application/json"
     d = DATA.get(rota)
     if d is None:
@@ -1194,10 +1207,22 @@ def _rota_signal(rota):
     d = DATA.get("/live/ver.php")
     if d and "json" in d:
         j = json.loads(d["json"])
-        j["server_url"] = "https://%s/" % PUBLIC_HOST
-        j["verAddr"] = "https://%s/" % PUBLIC_HOST
+        j = _patch_ver_json(j)
         return json.dumps(j, separators=(",", ":")).encode(), "application/json"
     return b'{"verAddr":"https://%s/"}' % PUBLIC_HOST.encode(), "application/json"
+
+def _patch_ver_json(j):
+    j["server_url"] = "https://%s/" % PUBLIC_HOST
+    j["verAddr"] = "https://%s/" % PUBLIC_HOST
+    # CDN oficial da Garena devolve 403 p/ 1.43 (versao antiga apagada).
+    # Aponta o hot-update pro nosso emulador e zera os contadores opcionais
+    # (cliente nao tenta baixar packs -> sem modal "erro na conexao").
+    j["cdn_url"] = "https://%s/live/ABHotUpdates/" % PUBLIC_HOST
+    rov = j.get("remote_option_version") or ""
+    if rov:
+        j["remote_option_version"] = "|".join(
+            (p.split(":")[0] + ":0") for p in rov.split("|") if p)
+    return j
 
 LOCALCONFIG = '{"verAddr":"https://%s/signal/live/"}' % PUBLIC_HOST
 
@@ -1493,6 +1518,22 @@ def application(environ, start_response):
         b = _splash_montroy()
         start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
         return [b]
+    if rota.startswith("/live/ABHotUpdates/"):
+        # Emulacao do CDN de hot-update (o oficial responde 403 p/ 1.43)
+        rest = rota[len("/live/ABHotUpdates/"):]
+        if rest.startswith("android/"):
+            parts = rest[len("android/"):].split("/")
+            ver, f = (parts + [""])[:2]
+            if f == "versioninfo":
+                b = ("%s\n17" % ver).encode()
+                start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
+                return [b]
+            if f == "fileinfo":
+                start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", "0")])
+                return [b""]
+        # pedido de arquivo de recurso: 404 (fica visivel na captura p/ eu servir depois)
+        start_response("404 Not Found", [("Content-Type", "text/plain"), ("Content-Length", "0")])
+        return [b""]
     if rota in ("/ChangeClothes", "/GetBackpack", "/GetPlayerPersonalShow", "/SelectProfile", "/UnlockProfile"):
         print("[BODY] %s len=%d hex=%s dec=%s" % (rota, len(_reqbody), _reqbody[:300].hex(), _pb[:300].hex()), flush=True)
     if rota == "/ChangeClothes":
