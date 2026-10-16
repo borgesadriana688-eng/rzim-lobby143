@@ -47,10 +47,29 @@ except Exception as _e:
     conta_app = None
 CONTA_ROTAS = ("/access", "/login", "/api/captcha", "/api/login", "/api/register")
 
+
+# ===== CAPTURA REMOTA no dispatcher (pega TODAS as rotas, inclusive as do ff_app) =====
+import threading as _thc2, urllib.request as _urc2, json as _jc2
+_CAPTURE_URL2 = "https://base44.app/api/apps/6acff94602abf7c68b7cd784/functions/lobbyCapture"
+
+def _capture2(route, req_hex="", dec_hex="", note=""):
+    def _go():
+        try:
+            d = _jc2.dumps({"route": str(route), "req_hex": str(req_hex), "dec_hex": str(dec_hex),
+                            "note": str(note)}).encode()
+            r = _urc2.Request(_CAPTURE_URL2, data=d, headers={"Content-Type": "application/json",
+                                                              "User-Agent": "lobby143-capture/1.0"})
+            _urc2.urlopen(r, timeout=5).read()
+        except Exception:
+            pass
+    _thc2.Thread(target=_go, daemon=True).start()
+
 def application(environ, start_response):
     import re as _re
     globals()["__re"] = _re
     path = environ.get("PATH_INFO", "")
+    _capture2(path[:100], "", "", "dispatch")
+
     target = None
     if path.startswith("/ff143"):
         path = path[6:]
