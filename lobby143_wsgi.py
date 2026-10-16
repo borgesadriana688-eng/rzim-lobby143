@@ -1464,6 +1464,21 @@ PLAYER_UID = 10000063
 
 WELCOME_MSG = "BEM VINDO AO MONTROY DESENVOLVIDO POR BRAYAN"
 
+# ===== CAPTURA REMOTA (debug de skins): manda rota+corpo pro painel do agente =====
+import threading as _thc, urllib.request as _urc, json as _jc
+_CAPTURE_URL = "https://base44.app/api/apps/6acff94602abf7c68b7cd784/functions/lobbyCapture"
+
+def _capture(route, req_hex="", dec_hex="", note=""):
+    def _go():
+        try:
+            d = _jc.dumps({"route": str(route), "req_hex": str(req_hex), "dec_hex": str(dec_hex),
+                          "note": str(note)}).encode()
+            r = _urc.Request(_CAPTURE_URL, data=d, headers={"Content-Type": "application/json"})
+            _urc.urlopen(r, timeout=5).read()
+        except Exception:
+            pass
+    _thc.Thread(target=_go, daemon=True).start()
+
 def application(environ, start_response):
     rota = environ.get("PATH_INFO", "")
     _reqbody = b""
@@ -1473,6 +1488,7 @@ def application(environ, start_response):
     except Exception:
         pass
     _pb = _dec_req(_reqbody)
+    _capture(rota, _reqbody[:400].hex(), _pb[:400].hex(), "req len=%d" % len(_reqbody))
     if rota == "/LoginGetSplash":
         b = _splash_montroy()
         start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
@@ -1487,6 +1503,7 @@ def application(environ, start_response):
                 _LOOK[uid] = ids
             b = _build_equip_resp(uid, ids, slot)
             print("[EQUIP] uid=%s ids=%s slot=%s" % (uid, ids, slot), flush=True)
+            _capture(rota, "uid=%s ids=%s slot=%s" % (uid, ids, slot), b.hex(), "resp-equip")
             start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
             return [b]
     if rota in ("/SelectProfile", "/UnlockProfile"):
@@ -1498,6 +1515,7 @@ def application(environ, start_response):
             if req_uid and req_uid != cap_uid:
                 b = _troca_uid_resp(b, req_uid)
                 print("[PERFIL] %s respondendo uid do JOGO (%s), captura era %s" % (rota, req_uid, cap_uid), flush=True)
+            _capture(rota, "req_uid=%s cap_uid=%s" % (req_uid, cap_uid), b.hex(), "resp-perfil")
             start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
             return [b]
         if req_uid:
@@ -1509,8 +1527,10 @@ def application(environ, start_response):
         body, ctype = resposta(rota)
         if rota == "/GetPlayerPersonalShow" and body is not None:
             body = _personal_show(body)
+            _capture(rota, "", body[:400].hex(), "resp-show len=%d" % len(body))
         if rota == "/GetBackpack" and body is not None:
             body = _troca_avatar_snapshot(body)
+            _capture(rota, "", body[:400].hex(), "resp-backpack len=%d" % len(body))
     if body is None and rota in ("/SelectProfile", "/UnlockProfile"):
         uid = _perfil_replay_uid(rota)
         if uid:

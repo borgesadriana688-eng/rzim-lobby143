@@ -1,0 +1,13 @@
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8099
+ * Running on http://172.20.51.122:8099
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [14/Oct/2026 22:04:31] "POST /SelectProfile HTTP/1.1" 200 -
+127.0.0.1 - - [14/Oct/2026 22:04:31] "POST /UnlockProfile HTTP/1.1" 200 -
+[BODY] /ChangeClothes len=4 hex=df381667
+127.0.0.1 - - [14/Oct/2026 22:04:31] "POST /ChangeClothes HTTP/1.1" 200 -
+[BODY] /GetPlayerPersonalShow len=4 hex=df381667
+127.0.0.1 - - [14/Oct/2026 22:04:31] "POST /GetPlayerPersonalShow HTTP/1.1" 200 -
+127.0.0.1 - - [14/Oct/2026 22:04:31] "POST /GetGachaInfo HTTP/1.1" 200 -
+127.0.0.1 - - [14/Oct/2026 22:04:31] "POST /GetPetList HTTP/1.1" 200 -
