@@ -1220,6 +1220,8 @@ def _patch_ver_json(j):
     # Aponta o hot-update pro nosso emulador e zera os contadores opcionais
     # (cliente nao tenta baixar packs -> sem modal "erro na conexao").
     j["cdn_url"] = "https://%s/live/ABHotUpdates/" % PUBLIC_HOST
+    # cliente MID5 1.70 puro: alinha a versao reportada com a local (1.70.0)
+    j["remote_version"] = "1.70.0"
     rov = j.get("remote_option_version") or ""
     if rov:
         j["remote_option_version"] = "|".join(
@@ -1586,7 +1588,7 @@ def application(environ, start_response):
             return [b]
     if body is None:
         if rota == "/app/info/get":
-            body = json.dumps({"client_log": False, "status": 0, "maintenance": False, "version": "1.43.0",
+            body = json.dumps({"client_log": False, "status": 0, "maintenance": False, "version": "1.70.0",
                 "game_server": GAME_PUBLIC_ADDR, "update_url": "",
                 "notice": {"title": "Rzim Server", "content": "Lobby 1.43", "show": True}}, separators=(",", ":")).encode()
             ctype = "application/json"
