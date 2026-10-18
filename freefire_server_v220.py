@@ -992,6 +992,18 @@ def debug_phone():
 
 @app.route('/', defaults={'path': ''}, methods=['GET', 'POST', 'PUT', 'DELETE'])
 @app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
+@app.route("/_logs", methods=["GET"])
+def _dump_all_logs():
+    import os as _os
+    out = {}
+    for fn in ("requests.log", "unknown_endpoints.log", "response_samples.log"):
+        try:
+            with open(_os.path.join(_os.environ.get("LOG_DIR", "."), fn)) as f:
+                out[fn] = f.read()[-8000:]
+        except Exception as e:
+            out[fn] = f"erro: {e}"
+    return jsonify(out)
+
 def catch_all(path):
     # FIX (v2.2.0): desconhecidos respondem {"status":"ok"} (igual deploy atual)
     try:
