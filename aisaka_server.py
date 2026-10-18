@@ -209,3 +209,16 @@ def catch_all(sub=""):
 if __name__ == "__main__":
     print(f"* AISAKA/CAELUS SERVER v{APP_VERSION} *")
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
+# --- ROTA DE LOGS (para o agente monitorar o trafego remotamente) ---
+@app.route("/_logs", methods=["GET"])
+def _dump_logs():
+    import os as _os
+    out = {}
+    for fn in ("requests.log", "unknown_endpoints.log", "response_samples.log"):
+        try:
+            with open(_os.path.join(LOG_DIR, fn)) as f:
+                out[fn] = f.read()[-8000:]
+        except Exception as e:
+            out[fn] = f"erro: {e}"
+    return jsonify(out)
