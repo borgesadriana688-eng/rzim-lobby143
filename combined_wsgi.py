@@ -14,7 +14,7 @@ AISAKA_PREFIXES = (
     "/v1/settings", "/v2/settings", "/clientsettings.api", "/auth", "/chat",
     "/friends", "/thumbnails", "/accountinformation", "/accountsettings",
     "/notifications", "/translations", "/locale", "/ecsv2", "/metrics",
-    "/ephemeralcounters", "/abtesting", "/contacts",
+    "/ephemeralcounters", "/abtesting", "/contacts", "/asset", "/v1/asset", "/mobile", "/v1.1",
     "/signup", "/v2/signup", "/_logs",
 )
 
