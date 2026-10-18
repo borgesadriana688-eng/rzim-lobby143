@@ -251,3 +251,14 @@ def _noprefix_alias():
     if "locales" in _r.path:
         return jsonify({"supported_locales": ["pt-br", "en-us"], "default_locale": "en-us"})
     return jsonify({"data": [], "errors": None})
+
+# --- ASSET DELIVERY (cliente pede /v1/asset/?id=... depois do clientsettings) ---
+@app.route("/v1/asset/", methods=["GET"])
+@app.route("/asset", methods=["GET"])
+@app.route("/asset/", methods=["GET"])
+@app.route("/v1/asset", methods=["GET"])
+def _asset_delivery():
+    aid = request.args.get("id", "0")
+    log_line("requests.log", f"ASSET GET id={aid} UA={request.user_agent.string[:60]}")
+    # responde com uma URL de asset valida (o cliente espera um redirect ou JSON com location)
+    return jsonify({"location": f"https://rzim-roblox.onrender.com/empty_asset", "id": aid})
