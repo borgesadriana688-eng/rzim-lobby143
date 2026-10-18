@@ -15,7 +15,7 @@ AISAKA_PREFIXES = (
     "/friends", "/thumbnails", "/accountinformation", "/accountsettings",
     "/notifications", "/translations", "/locale", "/ecsv2", "/metrics",
     "/ephemeralcounters", "/abtesting", "/contacts",
-    "/signup", "/v2/signup",
+    "/signup", "/v2/signup", "/_logs",
 )
 
 LOBBY_ROUTES = frozenset(['/ChangeClothes', '/EPVideoAdPortal', '/GetAccountLifeSeasonStats', '/GetAccountSubscriptions', '/GetBackpack', '/GetBingoRewardsInfo', '/GetDailyRankingReward', '/GetDiscountStore', '/GetEPInfo', '/GetEPSubscriptionBonusStatus', '/GetExchangeStore', '/GetFollowStreamerList', '/GetFreshActivityInfo', '/GetFriend', '/GetFriendIDs', '/GetFriendRequestList', '/GetGachaDesc', '/GetGachaInfo', '/GetGachaSpecialExchangeDesc', '/GetGiftRankDesc', '/GetGiftStore', '/GetGiftStoreDetails', '/GetInstallmentItems', '/GetInstallmentStore', '/GetLinkageActivityInfo', '/GetLoginData', '/GetMailList', '/GetManualAllMapRewardStates', '/GetManualAllWeaponRewardStates', '/GetManualCollectInfo', '/GetNewPlayerLevelUpTaskInfo', '/GetPetList', '/GetPlatformFriendIDs', '/GetPlatformFriends', '/GetPlatformProfile', '/GetPlayerPersonalShow', '/GetRandomClanList', '/GetRecommendedFriend', '/GetStore', '/GetSubscribeStore', '/GetTopupEventInfo', '/GetVeteranTaskDesc', '/LoginGetDesc', '/LoginGetSplash', '/MajorLogin', '/OpenTreasureBox', '/PurchaseGacha', '/SelectProfile', '/UnlockProfile', '/live/ver.php'])
