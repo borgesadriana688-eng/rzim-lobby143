@@ -53,20 +53,23 @@ CS_SETTINGS = {
 }
 
 def cs_v1(app_name="AndroidApp"):
-    # FIX: cliente 2.463 espera o mesmo formato do v2 (data wrapper + array de settings)
+    # FIX: parser do cliente 2.463 (b$a) procura "applicationSettings" (formato novo,
+    # dicionario plano de flags) e cai no fallback senao. Enviamos AMBOS os formatos.
     settings = [{"name": k, "type": "DynamicFlag" if k.startswith("FFlag") else "DynamicInt", "value": v}
                 for k, v in CS_SETTINGS.items()]
-    return {"data": {"applicationName": app_name,
+    return {"applicationSettings": dict(CS_SETTINGS),
+            "data": {"applicationName": app_name,
                      "lastUpdated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                      "isDefaults": False,
                      "schemaVersion": 1,
                      "settings": settings}}
 
 def cs_v2(app_name="AndroidApp"):
-    # formato v2 (lista de settings com tipo)
+    # formato v2 (lista de settings com tipo) + applicationSettings
     settings = [{"name": k, "type": "DynamicFlag" if k.startswith("FFlag") else "DynamicInt", "value": v}
                 for k, v in CS_SETTINGS.items()]
-    return {"data": {"applicationName": app_name,
+    return {"applicationSettings": dict(CS_SETTINGS),
+            "data": {"applicationName": app_name,
                      "lastUpdated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                      "isDefaults": False,
                      "schemaVersion": 1,
