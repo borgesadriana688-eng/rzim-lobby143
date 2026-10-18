@@ -222,3 +222,26 @@ def _dump_logs():
         except Exception as e:
             out[fn] = f"erro: {e}"
     return jsonify(out)
+
+# --- ROTAS SEM PREFIXO (cliente sem subdominio, ex: /v2/credentials em vez de /auth/v2/credentials) ---
+@app.route("/v2/credentials", methods=["GET", "POST"])
+@app.route("/v1/credentials", methods=["GET", "POST"])
+@app.route("/v2/authentication/anonymous", methods=["POST"])
+@app.route("/v1/authentication/anonymous", methods=["POST"])
+@app.route("/v2/logout", methods=["POST"])
+@app.route("/v1/locales", methods=["GET"])
+@app.route("/v1/batch", methods=["GET", "POST"])
+def _noprefix_alias():
+    from flask import request as _r
+    ua = _r.headers.get("User-Agent", "")
+    log_line("requests.log", f"NOPREFIX {_r.method} {_r.full_path} UA={ua[:80]}")
+    # responde o mesmo que as rotas com prefixo responderiam
+    if "credentials" in _r.path:
+        return jsonify({"data": [], "errors": None})
+    if "anonymous" in _r.path:
+        return jsonify({"status": "ok", "user_id": 1000001, "session_token": "rzim-" + uuid.uuid4().hex})
+    if "logout" in _r.path:
+        return jsonify({"status": "ok"})
+    if "locales" in _r.path:
+        return jsonify({"supported_locales": ["pt-br", "en-us"], "default_locale": "en-us"})
+    return jsonify({"data": [], "errors": None})

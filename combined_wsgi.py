@@ -78,6 +78,8 @@ def application(environ, start_response):
         return conta_app(environ, start_response)
     if lobby_app is not None and (path == "/" or path in LOBBY_ROUTES or path.startswith(("/live/", "/signal/", "/downloads/", "/access", "/api/login")) or path.startswith("/app/")):
         target = lobby_app
+    elif "roblox" in environ.get("HTTP_USER_AGENT", "").lower():
+        target = aisaka_app
     elif path.startswith(AISAKA_PREFIXES):
         target = aisaka_app
     elif ff_app is not None:
