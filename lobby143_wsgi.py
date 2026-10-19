@@ -1442,7 +1442,12 @@ def _dec_req(body):
 # (102000015, da conta capturada) pode nao renderizar no cliente (recursos).
 # Troca por um avatar padrao garantido (102000004, o default do rzim-server).
 # Configuravel via env AVATAR_PUBLIC_ID.
-AVATAR_PUBLIC_ID = int(os.environ.get("AVATAR_PUBLIC_ID") or "102000004")
+# FIX 19/10: perfil tem que ser COERENTE entre SelectProfile/ChangeClothes/
+# UnlockProfile (102000015, conforme _perfil_replay_uid) e o selected_items
+# do GetBackpack. O swap p/ 102000004 criava perfil divergente = personagem
+# invisivel + skin que nao equipa (exatamente o bug que _perfil_replay_uid
+# documenta). Default agora = 102000015 = desativa o swap.
+AVATAR_PUBLIC_ID = int(os.environ.get("AVATAR_PUBLIC_ID") or "102000015")
 _ANTIGO_AVATAR = b"\x08\x8f\xcb\xd1\x30"  # avatar_id 102000015
 
 def _troca_avatar_snapshot(b):
