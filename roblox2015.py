@@ -49,6 +49,25 @@ def _visit():
     with open(os.path.join(STORAGE, "visit.ashx"), "r") as f:
         return Response(f.read(), status=200, mimetype="text/plain")
 
+def _fetch_asset_url(aid):
+    cookie = os.environ.get("RBX_COOKIE", "").strip()
+    urls = [
+        f"https://assetdelivery.roblox.com/v2/assetId/{aid}?protocol=https",
+        f"https://assetdelivery.roblox.com/v1/asset/?id={aid}&protocol=https",
+    ]
+    for base in urls:
+        req = urllib.request.Request(base, headers={"User-Agent": "Roblox/WinInet; RobloxStudio/2015"})
+        if cookie:
+            req.add_header("Cookie", f".ROBLOSECURITY={cookie}")
+        try:
+            with urllib.request.urlopen(req, timeout=15) as r:
+                out = json.load(r)
+            if "locations" in out and out["locations"]:
+                return out["locations"][0]["location"]
+        except Exception as e:
+            log_line(f"ASSET2015 try {base[:60]} ERRO {e}")
+    return None
+
 @app.route("/asset/", methods=["GET"])
 @app.route("/Asset/", methods=["GET"])
 @app.route("/asset", methods=["GET"])
@@ -56,16 +75,10 @@ def _visit():
 def _asset():
     aid = request.args.get("id", "")
     log_line(f"ASSET2015 id={aid} path={request.path}")
-    try:
-        req = urllib.request.Request(f"https://assetdelivery.roblox.com/v2/assetId/{aid}",
-                                     headers={"User-Agent": "RobloxProxy/1.0"})
-        with urllib.request.urlopen(req, timeout=15) as r:
-            out = json.load(r)
-        url = out["locations"][0]["location"]
+    url = _fetch_asset_url(aid)
+    if url:
         return redirect(url, code=302)
-    except Exception as e:
-        log_line(f"ASSET2015 ERRO {e}")
-        return jsonify({"error": str(e)}), 502
+    return jsonify({"error": "asset requires auth (defina RBX_COOKIE)"}), 401
 
 @app.route("/Asset/CharacterFetch.ashx", methods=["GET"])
 def _charfetch():
