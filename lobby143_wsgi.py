@@ -1527,16 +1527,28 @@ def application(environ, start_response):
         rest = rota[len("/live/ABHotUpdates/"):]
         if rest.startswith("android/"):
             parts = rest[len("android/"):].split("/")
-            ver, f = (parts + [""])[:2]
-            if f == "versioninfo":
+            # FIX 19/10: caminhos de recurso OPCIONAL tem mais segmentos
+            # (ex.: android/optional/optionalclothres/0/fileinfo). O parser
+            # antigo lia so os 2 primeiros ("optional"=versao,
+            # "optionalclothres"=arquivo) e devolvia 404 pro fileinfo ->
+            # cliente 1.70 quebrava no lobby (TXT_ sem localizacao, skins
+            # nao equipam, personagem invisivel). Agora fileinfo/versioninfo
+            # sao reconhecidos no ULTIMO segmento, em qualquer profundidade.
+            last = parts[-1] if parts else ""
+            if last == "versioninfo":
                 # exatamente o que o OBB local do cliente tem: 1.70.0, contador 0
                 b = b"1.70.0\r\n0"
                 start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
                 return [b]
-            if f == "fileinfo":
-                # fileinfo exato do OBB (extraido do main.2019114971.obb) ->
-                # cliente conclui que esta 100% atualizado, nao baixa nada
-                b = base64.b64decode(ABHOT_FILEINFO_B64)
+            if last == "fileinfo":
+                if parts and parts[0] == "optional":
+                    # recurso opcional: manifesto VAZIO = "nada novo pra baixar"
+                    # -> cliente segue com os assets do OBB local, sem erro
+                    b = b""
+                else:
+                    # fileinfo exato do OBB (extraido do main.2019114971.obb) ->
+                    # cliente conclui que esta 100% atualizado, nao baixa nada
+                    b = base64.b64decode(ABHOT_FILEINFO_B64)
                 start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
                 return [b]
         # pedido de arquivo de recurso: 404 (fica visivel na captura p/ eu servir depois)
