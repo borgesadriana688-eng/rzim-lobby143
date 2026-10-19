@@ -18,6 +18,14 @@ def log_line(msg):
     except Exception:
         pass
 
+APPSETTINGS_BODY = {
+    "FakeUserAgent": False,
+    "FakeUserAgentString": "Roblox",
+    "UserAgentSuffix": "v2.200.60733",
+    "BaseUrl": "rzim-roblox.onrender.com/",
+    "BaseMobileUrl": "rzim-roblox.onrender.com/",
+}
+
 @app.route("/Setting/QuietGet/AndroidAppSettings", methods=["GET"])
 @app.route("/Setting/QuietGet/AndroidAppSettings/", methods=["GET"])
 @app.route("/Setting/QuietGet/ClientSharedSettings", methods=["GET"])
@@ -26,7 +34,33 @@ def log_line(msg):
 @app.route("/Setting/QuietGet/ClientAppSettings/", methods=["GET"])
 def _settings_quiet():
     log_line(f"GET {request.path}")
-    return jsonify({})
+    return jsonify(APPSETTINGS_BODY)
+
+@app.route("/mobileapi/check-app-version", methods=["GET"])
+def _checkappversion():
+    log_line(f"GET mobileapi/check-app-version Q={request.query_string.decode()[:60]}")
+    return jsonify({"data": {"status": "Success"}})
+
+@app.route("/mobileapi/login", methods=["GET", "POST"])
+def _mobile_login():
+    log_line(f"LOGIN2015 {request.method} Q={request.query_string.decode()[:80]} BODY={request.get_data()[:120]}")
+    return jsonify({"data": {"UserID": 10000063, "UserName": "Rzim", "SessionKey": "rzim-session-key", "IsLoggedIn": True, "Status": "Success"}})
+
+@app.route("/mobileapi/userinfo", methods=["GET", "POST"])
+@app.route("/mobileapi/userinfo/", methods=["GET", "POST"])
+def _mobile_userinfo():
+    log_line(f"USERINFO2015 {request.path}")
+    return jsonify({"data": {"UserID": 10000063, "UserName": "Rzim", "IsPremium": False}})
+
+@app.route("/mobileapi/logout", methods=["GET", "POST"])
+def _mobile_logout():
+    log_line("LOGOUT2015")
+    return jsonify({"data": {"Status": "Success"}})
+
+@app.route("/mobileapi/securesignup", methods=["GET", "POST"])
+def _mobile_signup():
+    log_line(f"SIGNUP2015 BODY={request.get_data()[:120]}")
+    return jsonify({"data": {"UserID": 10000063, "UserName": "Rzim", "SessionKey": "rzim-session-key", "Status": "Success"}})
 
 @app.route("/game/<path:file>", methods=["GET"])
 @app.route("/Game/<path:file>", methods=["GET"])
