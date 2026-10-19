@@ -19,8 +19,11 @@ def log_line(msg):
         pass
 
 @app.route("/Setting/QuietGet/AndroidAppSettings", methods=["GET"])
+@app.route("/Setting/QuietGet/AndroidAppSettings/", methods=["GET"])
 @app.route("/Setting/QuietGet/ClientSharedSettings", methods=["GET"])
+@app.route("/Setting/QuietGet/ClientSharedSettings/", methods=["GET"])
 @app.route("/Setting/QuietGet/ClientAppSettings", methods=["GET"])
+@app.route("/Setting/QuietGet/ClientAppSettings/", methods=["GET"])
 def _settings_quiet():
     log_line(f"GET {request.path}")
     return jsonify({})
