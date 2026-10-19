@@ -39,28 +39,32 @@ def _settings_quiet():
 @app.route("/mobileapi/check-app-version", methods=["GET"])
 def _checkappversion():
     log_line(f"GET mobileapi/check-app-version Q={request.query_string.decode()[:60]}")
-    return jsonify({"data": {"status": "Success"}})
+    return jsonify({"data": {"status": "Success"}, "Status": "OK"})
 
 @app.route("/mobileapi/login", methods=["GET", "POST"])
 def _mobile_login():
     log_line(f"LOGIN2015 {request.method} Q={request.query_string.decode()[:80]} BODY={request.get_data()[:120]}")
-    return jsonify({"data": {"UserID": 10000063, "UserName": "Rzim", "SessionKey": "rzim-session-key", "IsLoggedIn": True, "Status": "Success"}})
+    return jsonify({"Status": "OK", "UserInfo": _userinfo_obj()})
+
+def _userinfo_obj():
+    return {"UserID": 10000063, "UserName": "Rzim", "RobuxBalance": 9999, "TicketsBalance": 0,
+            "IsAnyBuildersClubMember": False, "ThumbnailUrl": ""}
 
 @app.route("/mobileapi/userinfo", methods=["GET", "POST"])
 @app.route("/mobileapi/userinfo/", methods=["GET", "POST"])
 def _mobile_userinfo():
     log_line(f"USERINFO2015 {request.path}")
-    return jsonify({"data": {"UserID": 10000063, "UserName": "Rzim", "IsPremium": False}})
+    return jsonify(_userinfo_obj())
 
 @app.route("/mobileapi/logout", methods=["GET", "POST"])
 def _mobile_logout():
     log_line("LOGOUT2015")
-    return jsonify({"data": {"Status": "Success"}})
+    return jsonify({"Status": "OK"})
 
 @app.route("/mobileapi/securesignup", methods=["GET", "POST"])
 def _mobile_signup():
     log_line(f"SIGNUP2015 BODY={request.get_data()[:120]}")
-    return jsonify({"data": {"UserID": 10000063, "UserName": "Rzim", "SessionKey": "rzim-session-key", "Status": "Success"}})
+    return jsonify({"Status": "OK", "UserInfo": _userinfo_obj()})
 
 @app.route("/game/<path:file>", methods=["GET"])
 @app.route("/Game/<path:file>", methods=["GET"])
