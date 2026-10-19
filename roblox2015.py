@@ -18,6 +18,7 @@ def log_line(msg):
     except Exception:
         pass
 
+@app.route("/Setting/QuietGet/AndroidAppSettings", methods=["GET"])
 @app.route("/Setting/QuietGet/ClientSharedSettings", methods=["GET"])
 @app.route("/Setting/QuietGet/ClientAppSettings", methods=["GET"])
 def _settings_quiet():
