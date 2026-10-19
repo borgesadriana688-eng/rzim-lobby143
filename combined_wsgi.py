@@ -29,7 +29,7 @@ def load_app(module_name, attr="app"):
 
 aisaka_app, aisaka_err = load_app("aisaka_server")
 rbx2015_app, rbx2015_err = load_app("roblox2015")
-RBX2015_PREFIXES = ("/Setting", "/Asset", "/Game", "/game", "/Error")
+RBX2015_PREFIXES = ("/Setting", "/Asset", "/asset", "/Game", "/game", "/Error")
 lobby_app, lobby_err = load_app("lobby143_wsgi")
 if lobby_err:
     print("[combined] ERRO lobby143:", lobby_err, file=sys.stderr)
