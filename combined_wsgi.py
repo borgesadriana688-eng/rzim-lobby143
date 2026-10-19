@@ -28,6 +28,8 @@ def load_app(module_name, attr="app"):
         return None, f"{module_name}: {e}\n{traceback.format_exc()[:500]}"
 
 aisaka_app, aisaka_err = load_app("aisaka_server")
+rbx2015_app, rbx2015_err = load_app("roblox2015")
+RBX2015_PREFIXES = ("/Setting", "/Asset", "/Game", "/game", "/Error")
 lobby_app, lobby_err = load_app("lobby143_wsgi")
 if lobby_err:
     print("[combined] ERRO lobby143:", lobby_err, file=sys.stderr)
@@ -78,6 +80,8 @@ def application(environ, start_response):
         return conta_app(environ, start_response)
     if lobby_app is not None and (path == "/" or path in LOBBY_ROUTES or path.startswith(("/live/", "/signal/", "/downloads/", "/access", "/api/login")) or path.startswith("/app/")):
         target = lobby_app
+    elif path.startswith(RBX2015_PREFIXES):
+        target = rbx2015_app
     elif "roblox" in environ.get("HTTP_USER_AGENT", "").lower():
         target = aisaka_app
     elif path.startswith(AISAKA_PREFIXES):
