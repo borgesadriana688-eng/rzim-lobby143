@@ -1182,7 +1182,7 @@ def resposta(rota):
         rota = "/live/ver.php"
     if rota == "/live/ver.php":
         j = json.loads(DATA["/live/ver.php"]["json"])
-        j = _patch_ver_json(j)
+        j = _patch_ver_json(j, veraddr=True)
         return json.dumps(j, separators=(",", ":")).encode(), "application/json"
     d = DATA.get(rota)
     if d is None:
@@ -1209,23 +1209,22 @@ def _rota_signal(rota):
     d = DATA.get("/live/ver.php")
     if d and "json" in d:
         j = json.loads(d["json"])
-        j = _patch_ver_json(j)
+        j = _patch_ver_json(j, veraddr=True)
         return json.dumps(j, separators=(",", ":")).encode(), "application/json"
     return b'{"verAddr":"https://%s/"}' % PUBLIC_HOST.encode(), "application/json"
 
-def _patch_ver_json(j):
+def _patch_ver_json(j, veraddr=False):
+    # FIX 19/10 (noite): restaura o comportamento EXATO da sessao boa de
+    # 16/10 (ver.php 821B = captura + server_url + verAddr). Os patches
+    # "emulador" de 16/10 17:41+ (cdn_url -> lobby143, remote_version ->
+    # 1.70.0, contadores zerados) faziam o cliente checar o hot-update em
+    # NOS (404/manifesto vazio) e o sistema de recursos degradava: TXT_
+    # no lugar da localizacao, skins que nao equipam, personagem invisivel.
+    # Com cdn_url oficial (403 silencioso, ignora e usa o OBB local) o
+    # lobby funcionava normal em pt-BR. Nao mexer aqui sem testar no jogo!
     j["server_url"] = "https://%s/" % PUBLIC_HOST
-    j["verAddr"] = "https://%s/" % PUBLIC_HOST
-    # CDN oficial da Garena devolve 403 p/ 1.43 (versao antiga apagada).
-    # Aponta o hot-update pro nosso emulador e zera os contadores opcionais
-    # (cliente nao tenta baixar packs -> sem modal "erro na conexao").
-    j["cdn_url"] = "https://%s/live/ABHotUpdates/" % PUBLIC_HOST
-    # cliente MID5 1.70 puro: alinha a versao reportada com a local (1.70.0)
-    j["remote_version"] = "1.70.0"
-    rov = j.get("remote_option_version") or ""
-    if rov:
-        j["remote_option_version"] = "|".join(
-            (p.split(":")[0] + ":0") for p in rov.split("|") if p)
+    if veraddr:
+        j["verAddr"] = "https://%s/" % PUBLIC_HOST
     return j
 
 LOCALCONFIG = '{"verAddr":"https://%s/signal/live/"}' % PUBLIC_HOST
@@ -1280,6 +1279,26 @@ def resposta_controle(rota, environ):
 import threading as _th
 _LOOK = {}          # uid -> [ids equipados]
 _LOOK_LOCK = _th.Lock()
+_LOOK_FILE = "look.json"
+
+def _look_load():
+    """Carrega looks equipados do disco (sobrevive a restart do worker)."""
+    try:
+        with open(_LOOK_FILE) as _f:
+            for _u, _ids in json.load(_f).items():
+                _LOOK[str(_u)] = list(_ids or [])
+        print("[LOOK] carregados %d uid(s) de %s" % (len(_LOOK), _LOOK_FILE), flush=True)
+    except Exception as _e:
+        print("[LOOK] nada carregado (%s)" % _e, flush=True)
+
+def _look_save():
+    try:
+        with open(_LOOK_FILE, "w") as _f:
+            json.dump(_LOOK, _f)
+    except Exception:
+        pass
+
+_look_load()
 
 def _rv(b, i):
     v = 0; sh = 0
@@ -1562,6 +1581,7 @@ def application(environ, start_response):
             uid, ids, slot = pe
             with _LOOK_LOCK:
                 _LOOK[uid] = ids
+                _look_save()
             b = _build_equip_resp(uid, ids, slot)
             print("[EQUIP] uid=%s ids=%s slot=%s" % (uid, ids, slot), flush=True)
             _capture(rota, "uid=%s ids=%s slot=%s" % (uid, ids, slot), b.hex(), "resp-equip")
