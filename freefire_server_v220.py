@@ -990,8 +990,6 @@ def fb_activities(app_id):
 def debug_phone():
     return "ok"
 
-@app.route('/', defaults={'path': ''}, methods=['GET', 'POST', 'PUT', 'DELETE'])
-@app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @app.route("/_logs", methods=["GET"])
 def _dump_all_logs():
     import os as _os
@@ -1004,6 +1002,11 @@ def _dump_all_logs():
             out[fn] = f"erro: {e}"
     return jsonify(out)
 
+# FIX 19/10: os decoradores catch-all estavam em cima de _dump_all_logs
+# (que nao recebe 'path') -> todo endpoint desconhecido dava TypeError/500
+# (LogEvent, GetCardsAndIAPInfo etc). Movidos pra catch_all, como deve ser.
+@app.route('/', defaults={'path': ''}, methods=['GET', 'POST', 'PUT', 'DELETE'])
+@app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def catch_all(path):
     # FIX (v2.2.0): desconhecidos respondem {"status":"ok"} (igual deploy atual)
     try:
