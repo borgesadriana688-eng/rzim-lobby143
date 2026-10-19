@@ -1225,6 +1225,9 @@ def _patch_ver_json(j, veraddr=False):
     j["server_url"] = "https://%s/" % PUBLIC_HOST
     if veraddr:
         j["verAddr"] = "https://%s/" % PUBLIC_HOST
+    if PROXY_ON and PROXY_REMOTE_VERSION:
+        # alinha com a versao do servidor de referencia (ex.: 1.70.4)
+        j["remote_version"] = PROXY_REMOTE_VERSION
     return j
 
 LOCALCONFIG = '{"verAddr":"https://%s/signal/live/"}' % PUBLIC_HOST
@@ -1532,6 +1535,78 @@ def _capture(route, req_hex="", dec_hex="", note=""):
             pass
     _thc.Thread(target=_go, daemon=True).start()
 
+# ===== MODO PONTE: captura do servidor que FUNCIONA (19/10) =====
+# Repassa cada pedido do cliente ao servidor de referencia (ex.: pautavero),
+# grava pares pedido/resposta em capture.jsonl e devolve a resposta intacta.
+# Ativa via env: PROXY_PANEL, PROXY_GAME, (opcional) PROXY_REMOTE_VERSION.
+PROXY_PANEL = os.environ.get("PROXY_PANEL") or ""
+PROXY_GAME = os.environ.get("PROXY_GAME") or ""
+PROXY_REMOTE_VERSION = os.environ.get("PROXY_REMOTE_VERSION") or ""
+PROXY_ON = bool(PROXY_GAME)
+_PROXY_CAPTURE_FILE = "capture.jsonl"
+_PROXY_LOCK = _th.Lock()
+_PROXY_COOKIES = {}
+
+def _proxy_fwd(target, environ, body):
+    """Repassa o pedido ao servidor alvo e devolve (status, ctype, resp)."""
+    req = _urc.Request(target, data=body if body else None,
+                       method=environ.get("REQUEST_METHOD", "GET"))
+    for h in ("Content-Type", "User-Agent", "Accept"):
+        v = environ.get("HTTP_" + h.upper().replace("-", "_"))
+        if v:
+            req.add_header(h, v)
+    if _PROXY_COOKIES:
+        req.add_header("Cookie", "; ".join("%s=%s" % kv for kv in _PROXY_COOKIES.items()))
+    try:
+        r = _urc.urlopen(req, timeout=90)
+        st, hdrs, resp = r.status, r.headers, r.read()
+    except _urc.HTTPError as e:
+        st, hdrs, resp = e.code, e.headers, e.read()
+    except Exception as e:
+        return 502, "text/plain", str(e).encode()[:200]
+    try:
+        for sc in (hdrs.get_all("Set-Cookie") or []):
+            kv = sc.split(";", 1)[0]
+            if "=" in kv:
+                k, v = kv.split("=", 1)
+                _PROXY_COOKIES[k.strip()] = v.strip()
+    except Exception:
+        pass
+    return st, (hdrs.get("Content-Type") or "application/octet-stream"), resp
+
+def _proxy_save(rota, req, st, ct, resp):
+    """Grava o par pedido/resposta (a captura que vira o jogo do servidor)."""
+    line = _jc.dumps({"t": int(time.time()), "rota": rota, "status": st,
+                      "ctype": ct, "req_b64": base64.b64encode(req).decode(),
+                      "resp_b64": base64.b64encode(resp).decode()})
+    try:
+        with _PROXY_LOCK:
+            with open(_PROXY_CAPTURE_FILE, "a") as _f:
+                _f.write(line + "\n")
+    except Exception:
+        pass
+    _capture("PROXY " + rota, base64.b64encode(req)[:60].decode(), resp[:80].hex(),
+             "len=%d st=%d" % (len(resp), st))
+
+def _proxy_handle(rota, environ, body):
+    """True se atendeu (resposta ja enviada); False se a rota e local."""
+    p = rota.split("?")[0]
+    # rotas locais em modo ponte: ver/sinal, downloads, hot-update, admin
+    if (p in ("/", "/health", "/_logs", "/_captures") or
+            p.startswith(("/signal/live", "/live/", "/downloads/", "/_logs", "/_captures"))):
+        return False
+    if p.startswith("/api/") or p.startswith("/access"):
+        tgt = PROXY_PANEL.rstrip("/") + p
+    else:
+        tgt = PROXY_GAME.rstrip("/") + p
+    q = environ.get("QUERY_STRING") or ""
+    if q:
+        tgt += "?" + q
+    st, ct, resp = _proxy_fwd(tgt, environ, body)
+    print("[PONTE] %s -> %s | HTTP %s | %d bytes" % (p, tgt, st, len(resp)), flush=True)
+    _proxy_save(p, body, st, ct, resp)
+    return st, ct, resp
+
 def application(environ, start_response):
     rota = environ.get("PATH_INFO", "")
     _reqbody = b""
@@ -1541,6 +1616,21 @@ def application(environ, start_response):
     except Exception:
         pass
     _pb = _dec_req(_reqbody)
+    if PROXY_ON:
+        _pr = _proxy_handle(rota, environ, _reqbody)
+        if _pr is not False:
+            st, ct, resp = _pr
+            start_response("%d %s" % (st, "OK" if st < 400 else "ERROR"),
+                           [("Content-Type", ct), ("Content-Length", str(len(resp)))])
+            return [resp]
+        if rota.startswith("/_captures"):
+            try:
+                with open(_PROXY_CAPTURE_FILE, "rb") as _f:
+                    _b = _f.read()
+            except Exception:
+                _b = b""
+            start_response("200 OK", [("Content-Type", "application/json"), ("Content-Length", str(len(_b)))])
+            return [_b]
     _capture(rota, _reqbody[:400].hex(), _pb[:400].hex(), "req len=%d" % len(_reqbody))
     if rota == "/LoginGetSplash":
         b = _splash_montroy()
