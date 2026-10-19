@@ -8,6 +8,7 @@
 import os, sys, traceback
 
 FF_FILE = os.environ.get("FF_FILE", "freefire_server_v220.py")
+PROXY_GAME_ENV = os.environ.get("PROXY_GAME") or ""
 
 AISAKA_PREFIXES = (
     "/download", "/_upload", "/crash",
@@ -75,6 +76,17 @@ def application(environ, start_response):
     target = None
     if path.startswith("/ff143"):
         path = path[6:]
+    # MODO PONTE: com PROXY_GAME ativo, todo o trafego do jogo FF (registro,
+    # login, lobby) vai pra lobby143_wsgi, que repassa ao servidor de
+    # referencia e grava as capturas. Roblox/Aisaka, health e logs seguem local.
+    if PROXY_GAME_ENV and lobby_app is not None:
+        _segue_local = (path in ("/health", "/_logs") or
+                        path.startswith(RBX2015_PREFIXES) or
+                        (path.startswith(AISAKA_PREFIXES) and
+                         not path.startswith(("/downloads/", "/api/", "/access", "/signal/", "/live/"))))
+        if not _segue_local:
+            environ["PATH_INFO"] = path
+            return lobby_app(environ, start_response)
     if conta_app is not None and (path in CONTA_ROTAS or (conta_pv._eh_fb_dialog(path) if "conta_pv" in globals() else False)):
         environ["PATH_INFO"] = path
         return conta_app(environ, start_response)
