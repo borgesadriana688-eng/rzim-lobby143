@@ -1292,6 +1292,10 @@ def application(environ, start_response):
             start_response("200 OK", [("Content-Type", "application/json"), ("Content-Length", str(len(_b)))])
             return [_b]
     _capture(rota, _reqbody[:400].hex(), _pb[:400].hex(), "req len=%d" % len(_reqbody))
+    # MODO LOCAL: o cliente chama /signal/main/X no servidor principal (rzim).
+    # Tira o prefixo para casar com as respostas embutidas (DATA) e a logica local.
+    if rota.startswith("/signal/main/"):
+        rota = "/" + rota[len("/signal/main/"):]
     if rota == "/LoginGetSplash":
         b = _splash_montroy()
         start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])

@@ -19,7 +19,7 @@ AISAKA_PREFIXES = (
     "/signup", "/v2/signup", "/_logs",
 )
 
-LOBBY_ROUTES = frozenset(['/ChangeClothes', '/EPVideoAdPortal', '/GetAccountLifeSeasonStats', '/GetAccountSubscriptions', '/GetBackpack', '/GetBingoRewardsInfo', '/GetDailyRankingReward', '/GetDiscountStore', '/GetEPInfo', '/GetEPSubscriptionBonusStatus', '/GetExchangeStore', '/GetFollowStreamerList', '/GetFreshActivityInfo', '/GetFriend', '/GetFriendIDs', '/GetFriendRequestList', '/GetGachaDesc', '/GetGachaInfo', '/GetGachaSpecialExchangeDesc', '/GetGiftRankDesc', '/GetGiftStore', '/GetGiftStoreDetails', '/GetInstallmentItems', '/GetInstallmentStore', '/GetLinkageActivityInfo', '/GetLoginData', '/GetMailList', '/GetManualAllMapRewardStates', '/GetManualAllWeaponRewardStates', '/GetManualCollectInfo', '/GetNewPlayerLevelUpTaskInfo', '/GetPetList', '/GetPlatformFriendIDs', '/GetPlatformFriends', '/GetPlatformProfile', '/GetPlayerPersonalShow', '/GetRandomClanList', '/GetRecommendedFriend', '/GetStore', '/GetSubscribeStore', '/GetTopupEventInfo', '/GetVeteranTaskDesc', '/LoginGetDesc', '/LoginGetSplash', '/MajorLogin', '/OpenTreasureBox', '/PurchaseGacha', '/SelectProfile', '/UnlockProfile', '/live/ver.php'])
+LOBBY_ROUTES = frozenset(['/Login', '/ChangeClothes', '/EPVideoAdPortal', '/GetAccountLifeSeasonStats', '/GetAccountSubscriptions', '/GetBackpack', '/GetBingoRewardsInfo', '/GetDailyRankingReward', '/GetDiscountStore', '/GetEPInfo', '/GetEPSubscriptionBonusStatus', '/GetExchangeStore', '/GetFollowStreamerList', '/GetFreshActivityInfo', '/GetFriend', '/GetFriendIDs', '/GetFriendRequestList', '/GetGachaDesc', '/GetGachaInfo', '/GetGachaSpecialExchangeDesc', '/GetGiftRankDesc', '/GetGiftStore', '/GetGiftStoreDetails', '/GetInstallmentItems', '/GetInstallmentStore', '/GetLinkageActivityInfo', '/GetLoginData', '/GetMailList', '/GetManualAllMapRewardStates', '/GetManualAllWeaponRewardStates', '/GetManualCollectInfo', '/GetNewPlayerLevelUpTaskInfo', '/GetPetList', '/GetPlatformFriendIDs', '/GetPlatformFriends', '/GetPlatformProfile', '/GetPlayerPersonalShow', '/GetRandomClanList', '/GetRecommendedFriend', '/GetStore', '/GetSubscribeStore', '/GetTopupEventInfo', '/GetVeteranTaskDesc', '/LoginGetDesc', '/LoginGetSplash', '/MajorLogin', '/OpenTreasureBox', '/PurchaseGacha', '/SelectProfile', '/UnlockProfile', '/live/ver.php'])
 
 def load_app(module_name, attr="app"):
     try:
@@ -48,7 +48,8 @@ try:
 except Exception as _e:
     print("[combined] conta_pv nao importado:", _e, file=sys.stderr)
     conta_app = None
-CONTA_ROTAS = ("/access", "/login", "/api/captcha", "/api/login", "/api/register")
+CONTA_ROTAS = ("/access", "/login", "/api/captcha", "/api/register")
+# /api/login cai no lobby143_wsgi (resposta estatica uid 10011227 = identidade embutida)
 
 
 # ===== CAPTURA REMOTA no dispatcher (pega TODAS as rotas, inclusive as do ff_app) =====
@@ -90,7 +91,7 @@ def application(environ, start_response):
     if conta_app is not None and (path in CONTA_ROTAS or (conta_pv._eh_fb_dialog(path) if "conta_pv" in globals() else False)):
         environ["PATH_INFO"] = path
         return conta_app(environ, start_response)
-    if lobby_app is not None and (path == "/" or path in LOBBY_ROUTES or path.startswith(("/live/", "/signal/", "/downloads/", "/access", "/api/login")) or path.startswith("/app/")):
+    if lobby_app is not None and (path == "/" or path in LOBBY_ROUTES or path.startswith(("/live/", "/signal/", "/oauth/", "/downloads/", "/access", "/api/login")) or path.startswith("/app/")):
         target = lobby_app
     elif path.startswith(RBX2015_PREFIXES):
         target = rbx2015_app
