@@ -1599,7 +1599,18 @@ def _proxy_handle(rota, environ, body):
     # e do painel, nao do jogo -> vai pro host do painel de referencia
     _fbdlg = bool(__import__("re").fullmatch(r"(/v\d+(\.\d+)?)?/dialog/oauth", p)) or \
               p.rstrip("/") in ("/login.php", "/v9.0/login.php", "/dialog/oauth/")
-    if p.startswith("/api/") or p.startswith("/access") or _fbdlg:
+    if _fbdlg:
+        # tela de login do jogo (WebView do dialogo FB): serve a pagina de
+        # login LOCAL; os /api/captcha, /api/register e /api/login que ela
+        # chama vao pela ponte pro painel de referencia, entao a conta
+        # criada e REAL la. Sem isso o WebView mostrava "Not implemented!!".
+        try:
+            import conta_pv as _cpv
+            return 200, "text/html; charset=utf-8", _cpv.LOGIN_HTML
+        except Exception:
+            pass
+        tgt = PROXY_PANEL.rstrip("/") + p
+    if p.startswith("/api/") or p.startswith("/access"):
         tgt = PROXY_PANEL.rstrip("/") + p
     else:
         tgt = PROXY_GAME.rstrip("/") + p
