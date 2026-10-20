@@ -830,6 +830,24 @@ def _build_equip_resp(uid, ids, slot):
     inner = b"\x08" + _wv(uid) + b"\x10\x01\x18" + _wv(slot) + b"\x22" + _wv(len(packed)) + packed + b"\x2a\x05\x08\x00\x10\x9e\x11\x30\x01"
     return b"\x0a" + _wv(len(inner)) + inner
 
+def _broadcast_montroy():
+    """Letreiro do lobby (LoginGetBroadcast): mensagem unica do Bryan.
+    Sem broadcast de 'System' e sem chat de outros jogadores."""
+    def _wv(n):
+        out = b""
+        while True:
+            x = n & 0x7f; n >>= 7
+            out += bytes([x | (0x80 if n else 0)])
+            if not n: return out
+    def _s(f, v): return bytes([f << 3 | 2]) + _wv(len(v)) + v
+    def _v(f, n): return bytes([f << 3]) + _wv(n)
+    texto = "Bem vindo ao montroy Server, desenvolvido por Brayan".encode()
+    inner = _s(1, b"pt-BR") + _s(3, texto)
+    agora = int(time.time() * 1000)
+    b = (_s(1, _s(1, inner))   # field1{ field1{ idioma, texto do letreiro } }
+         + _v(4, 0) + _v(5, agora) + _v(6, 1) + _v(2, 0))
+    return b
+
 def _splash_montroy():
     """LoginGetSplash: sem imagem de banner MID5 e sem link. Item de anuncio so com texto MONTROY."""
     def s(f, v):
@@ -1296,6 +1314,10 @@ def application(environ, start_response):
     # Tira o prefixo para casar com as respostas embutidas (DATA) e a logica local.
     if rota.startswith("/signal/main/"):
         rota = "/" + rota[len("/signal/main/"):]
+    if rota == "/LoginGetBroadcast":
+        b = _broadcast_montroy()
+        start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
+        return [b]
     if rota == "/LoginGetSplash":
         b = _splash_montroy()
         start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
