@@ -1694,8 +1694,11 @@ def _proxy_handle(rota, environ, body):
         except Exception:
             pass
         tgt = PROXY_PANEL.rstrip("/") + p
+    # servidor principal do jogo (URL devolvida no MajorLogin)
+    if p.startswith("/signal/main"):
+        tgt = "https://api.pautavero.com/signal/main" + p[len("/signal/main"):]
     # /oauth/* (exchange do MSDK) tambem e do PAINEL de referencia
-    if p.startswith("/api/") or p.startswith("/access") or p.startswith("/oauth/"):
+    elif p.startswith("/api/") or p.startswith("/access") or p.startswith("/oauth/"):
         tgt = PROXY_PANEL.rstrip("/") + p
     else:
         tgt = PROXY_GAME.rstrip("/") + p
@@ -1736,6 +1739,14 @@ def _proxy_handle(rota, environ, body):
             st, ct, resp = _proxy_fwd(tgt, environ, body, use_cookies=False)
     else:
         st, ct, resp = _proxy_fwd(tgt, environ, _proxy_game_body(body))
+    # o MajorLogin devolve a URL do servidor principal (api.pautavero.com/
+    # signal/main); o cliente conectaria DIRETO, contornando a ponte e o
+    # mesmo filtro de versao/certificado. Redireciona pro nosso host de
+    # 17 chars (mesmo tamanho da URL original, 37 bytes).
+    if b"https://api.pautavero.com/signal/main" in resp:
+        resp = resp.replace(b"https://api.pautavero.com/signal/main",
+                            b"https://rzim.onrender.com/signal/main")
+        print("[PONTE] URL principal reescrita -> rzim.onrender.com", flush=True)
     print("[PONTE] %s -> %s | HTTP %s | %d bytes" % (p, tgt, st, len(resp)), flush=True)
     _proxy_save(p, body, st, ct, resp)
     return st, ct, resp
