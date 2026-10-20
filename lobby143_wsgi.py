@@ -1668,7 +1668,8 @@ def _proxy_handle(rota, environ, body):
         except Exception:
             pass
         tgt = PROXY_PANEL.rstrip("/") + p
-    if p.startswith("/api/") or p.startswith("/access"):
+    # /oauth/* (exchange do MSDK) tambem e do PAINEL de referencia
+    if p.startswith("/api/") or p.startswith("/access") or p.startswith("/oauth/"):
         tgt = PROXY_PANEL.rstrip("/") + p
     else:
         tgt = PROXY_GAME.rstrip("/") + p
