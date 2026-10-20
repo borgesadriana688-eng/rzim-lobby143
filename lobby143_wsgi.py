@@ -1578,6 +1578,25 @@ def _panel_fwd(tgt, environ, body):
         print("[PONTE] relay do painel falhou: %s" % e, flush=True)
         return None
 
+_ORIG_CERT_MD5 = b"9fb8f21073d34e50d8cfcec891b5e511"   # cert do APK original de referencia
+_HYB_CERT_MD5 = b"ffd6314a83f267ac4f9407fd2e5a0480"   # cert do APK do cliente local (uber debug)
+
+def _proxy_game_body(body):
+    """O servidor de referencia so aceita o cliente 1.70 com o certificado do
+    APK original: reescreve o corpo AES (mesmos tamanhos, padding intacto),
+    trocando a versao 1.43.0 -> 1.70.0 e o MD5 do certificado."""
+    if not body or len(body) % 16 or _AES_C is None:
+        return body
+    try:
+        p = _AES_C.new(_AES_KEY, _AES_C.MODE_CBC, _AES_IV).decrypt(body)
+        if b"1.43.0" in p or _HYB_CERT_MD5 in p:
+            p = p.replace(b"1.43.0", b"1.70.0")
+            p = p.replace(_HYB_CERT_MD5, _ORIG_CERT_MD5)
+            return _AES_C.new(_AES_KEY, _AES_C.MODE_CBC, _AES_IV).encrypt(p)
+    except Exception:
+        pass
+    return body
+
 def _proxy_fwd(target, environ, body, use_cookies=True):
     """Repassa o pedido ao servidor alvo e devolve (status, ctype, resp)."""
     req = _urc.Request(target, data=body if body else None,
@@ -1716,7 +1735,7 @@ def _proxy_handle(rota, environ, body):
         else:
             st, ct, resp = _proxy_fwd(tgt, environ, body, use_cookies=False)
     else:
-        st, ct, resp = _proxy_fwd(tgt, environ, body)
+        st, ct, resp = _proxy_fwd(tgt, environ, _proxy_game_body(body))
     print("[PONTE] %s -> %s | HTTP %s | %d bytes" % (p, tgt, st, len(resp)), flush=True)
     _proxy_save(p, body, st, ct, resp)
     return st, ct, resp
