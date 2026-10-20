@@ -831,8 +831,9 @@ def _build_equip_resp(uid, ids, slot):
     return b"\x0a" + _wv(len(inner)) + inner
 
 def _broadcast_montroy():
-    """Letreiro do lobby (LoginGetBroadcast): mensagem unica do Bryan.
-    Sem broadcast de 'System' e sem chat de outros jogadores."""
+    """Letreiro do lobby (LoginGetBroadcast): texto do Bryan.
+    Espelha a estrutura exata da resposta real (que funcionava) com as
+    strings trocadas; sem creditos de terceiros."""
     def _wv(n):
         out = b""
         while True:
@@ -842,9 +843,11 @@ def _broadcast_montroy():
     def _s(f, v): return bytes([f << 3 | 2]) + _wv(len(v)) + v
     def _v(f, n): return bytes([f << 3]) + _wv(n)
     texto = "Bem vindo ao montroy Server, desenvolvido por Brayan".encode()
-    inner = _s(1, b"pt-BR") + _s(3, texto)
     agora = int(time.time() * 1000)
-    b = (_s(1, _s(1, inner))   # field1{ field1{ idioma, texto do letreiro } }
+    msg_system = (_s(1, b"System") + _v(2, 0)
+                  + _s(3, texto) + _v(4, 0) + _v(5, agora) + _v(6, 1))
+    b = (_s(1, _s(1, _s(1, b"pt-BR") + _s(3, texto)) + _s(2, msg_system))
+         + _s(2, msg_system)
          + _v(4, 0) + _v(5, agora) + _v(6, 1) + _v(2, 0))
     return b
 
