@@ -1,6 +1,6 @@
 import hashlib
 # LOBBY 1.43 como app WSGI (replay das capturas reais) - roda no dispatcher
-import zlib, base64, json, os, time
+import zlib, base64, json, os, time, re
 
 DATA_B64 = (
 "eNrs3Vuvqtza7vmvUpmnVKKiolayDnCPCLjfcLKCOwRBRAWFlfruhWM45rbPOf/tpFJJrffNyPM4H/R3w9U6d4PeZPyvv5QGx+c4"
@@ -1615,6 +1615,38 @@ def _proxy_save(rota, req, st, ct, resp):
     _capture("PROXY " + rota, base64.b64encode(req)[:60].decode(), resp[:80].hex(),
              "len=%d st=%d" % (len(resp), st))
 
+_PAIR_CACHE = {"v": "", "t": 0.0}
+
+def _proxy_current_pair():
+    """Busca o pair_id atual da pagina de login do painel de referencia.
+    E rotativo: valor fixo no codigo da erro "Sessao de login expirada"."""
+    now = time.time()
+    if _PAIR_CACHE["v"] and now - _PAIR_CACHE["t"] < 60:
+        return _PAIR_CACHE["v"]
+    tgt = PROXY_PANEL.rstrip("/") + "/login"
+    # tenta via relay (Render e bloqueado direto) e depois direto
+    for via_rel in (PROXY_PANEL_RELAY, ""):
+        try:
+            html = ""
+            if via_rel:
+                d = _jc.dumps({"target": tgt, "method": "GET",
+                               "ctype": "text/html", "body": ""}).encode()
+                req = _urc.Request(via_rel, data=d,
+                                  headers={"Content-Type": "application/json"})
+                j = _jc.loads(_urc.urlopen(req, timeout=60).read())
+                html = base64.b64decode(j.get("resp_b64") or b"").decode("utf-8", "replace")
+            else:
+                req = _urc.Request(tgt, headers={"User-Agent": "Dalvik/2.1.0"})
+                html = _urc.urlopen(req, timeout=60).read().decode("utf-8", "replace")
+            m = re.search(r"REVENGER_PAIR_ID\s*=\s*'([^']+)'", html)
+            if m:
+                _PAIR_CACHE.update({"v": m.group(1), "t": now})
+                print("[PONTE] pair_id atual: %s (via %s)" % (m.group(1)[:10], "relay" if via_rel else "direto"), flush=True)
+                return m.group(1)
+        except Exception as e:
+            print("[PONTE] busca pair falhou (%s)" % e, flush=True)
+    return _PAIR_CACHE.get("v") or ""
+
 def _proxy_handle(rota, environ, body):
     """True se atendeu (resposta ja enviada); False se a rota e local."""
     p = rota.split("?")[0]
@@ -1647,7 +1679,11 @@ def _proxy_handle(rota, environ, body):
         try:
             _j = json.loads(body.decode("utf-8"))
             if isinstance(_j, dict) and "pair_id" in _j:
-                _j["pair_id"] = os.environ.get("PROXY_PAIR_ID") or "EzbXBGEBWED6GGjpckXqZBCexyyUwksK"
+                _par = _proxy_current_pair()
+                if _par:
+                    _j["pair_id"] = _par
+                else:
+                    del _j["pair_id"]
                 body = json.dumps(_j).encode("utf-8")
         except Exception:
             pass
