@@ -1595,7 +1595,11 @@ def _proxy_handle(rota, environ, body):
     if (p in ("/", "/health", "/_logs", "/_captures") or
             p.startswith(("/signal/live", "/live/", "/downloads/", "/_logs", "/_captures"))):
         return False
-    if p.startswith("/api/") or p.startswith("/access"):
+    # dialogo de login estilo Facebook (tela de login do jogo em WebView)
+    # e do painel, nao do jogo -> vai pro host do painel de referencia
+    _fbdlg = bool(__import__("re").fullmatch(r"(/v\d+(\.\d+)?)?/dialog/oauth", p)) or \
+              p.rstrip("/") in ("/login.php", "/v9.0/login.php", "/dialog/oauth/")
+    if p.startswith("/api/") or p.startswith("/access") or _fbdlg:
         tgt = PROXY_PANEL.rstrip("/") + p
     else:
         tgt = PROXY_GAME.rstrip("/") + p
