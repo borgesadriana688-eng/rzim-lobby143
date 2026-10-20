@@ -1644,11 +1644,12 @@ def _proxy_fwd(target, environ, body, use_cookies=True):
             pass
     return st, (hdrs.get("Content-Type") or "application/octet-stream"), resp
 
-def _proxy_save(rota, req, st, ct, resp):
+def _proxy_save(rota, req, st, ct, resp, hdrs=None):
     """Grava o par pedido/resposta (a captura que vira o jogo do servidor)."""
     line = _jc.dumps({"t": int(time.time()), "rota": rota, "status": st,
                       "ctype": ct, "req_b64": base64.b64encode(req).decode(),
-                      "resp_b64": base64.b64encode(resp).decode()})
+                      "resp_b64": base64.b64encode(resp).decode(),
+                      "hdrs": hdrs or {}})
     try:
         with _PROXY_LOCK:
             with open(_PROXY_CAPTURE_FILE, "a") as _f:
@@ -1765,7 +1766,9 @@ def _proxy_handle(rota, environ, body):
                             b"https://rzim.onrender.com/signal/main")
         print("[PONTE] URL principal reescrita -> rzim.onrender.com", flush=True)
     print("[PONTE] %s -> %s | HTTP %s | %d bytes" % (p, tgt, st, len(resp)), flush=True)
-    _proxy_save(p, body, st, ct, resp)
+    _proxy_save(p, body, st, ct, resp,
+                hdrs={k[5:].replace("_", "-"): v for k, v in environ.items()
+                      if k.startswith("HTTP_")})
     return st, ct, resp
 
 def application(environ, start_response):
