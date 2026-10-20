@@ -1605,6 +1605,23 @@ def _proxy_fwd(target, environ, body, use_cookies=True):
         v = environ.get("HTTP_" + h.upper().replace("-", "_"))
         if v:
             req.add_header(h, v)
+    # repassa os cabecalhos proprios do jogo (X-*, ReleaseVersion etc.):
+    # carregam o ticket de sessao do /Login que o servidor principal exige
+    # — sem eles GetLoginData responde vazio.
+    _skip = {"host", "content-length", "connection", "accept-encoding",
+             "content-type", "user-agent", "accept", "cookie", "origin",
+             "referer", "x-forwarded-for", "x-forwarded-host"}
+    for hk, hv in environ.items():
+        if not hk.startswith("HTTP_"):
+            continue
+        hn = hk[5:].replace("_", "-")
+        if hn.lower() in _skip:
+            continue
+        try:
+            if not req.has_header(hn):
+                req.add_header(hn, hv)
+        except Exception:
+            pass
     # rotas do painel de referencia vao SEM cookies: sessao antiga acumulada
     # fazia o painel responder 400 com a pagina HTML de erro
     if use_cookies and _PROXY_COOKIES:
