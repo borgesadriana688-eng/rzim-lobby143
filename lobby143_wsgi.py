@@ -1260,11 +1260,18 @@ b"<button onclick=\"go()\">ENTRAR COM CONTA RZIM</button></div>"
 b"<script>setTimeout(go,700);function go(){var r='fb6002969496135738://authorize/#granted_scopes=email%2Copenid%2Cpublic_profile&denied_scopes=&access_token=RZIMTOKEN4112e4f337adcc473da13d97&expires_in=5184000&open_id=local%3Arzimspy01&uid=10006604';location.href=r;}</script>"
 b"</body></html>")
 
+# manifest-v2.json: envelope assinado (RSA-SHA256) exigido pelo guarda do
+# APK MID5. Chave privada gerada por nos; a publica correspondente esta
+# cravada no APK modificado (mesmo tamanho da original deles).
+_MANIFEST_V2 = '{"payload":"eyJvYmIiOnsic2hhMjU2IjoiNGU0ODFiZDBjYjgxY2E0OGUyZDBiNjAzNTkxYmI1OGMyNzgzYmE0Mzk3ZTJlYmVlNGNiYzMxYzU5ZGE4NWFhNyIsInNpemUiOjU4OTQxODMyNiwidXJsIjoiaHR0cHM6Ly9naXRodWIuY29tL2Jvcmdlc2FkcmlhbmE2ODgtZW5nL2dvZG90L3JlbGVhc2VzL2Rvd25sb2FkL3J6aW0tMTQzLXYxL21haW4uMjAxOTExNDk3MS5jb20uZHRzLmZyZWVmaXJldGgub2JiIiwiY2h1bmtzIjpbXX0sImxvY2FsY29uZmlnIjp7InNoYTI1NiI6ImVhNWJiNmQ2ZDQwYTE0ZDlhOTc2MDY2YjkyYjUyOGUyNWMwZDBhZTk3ZGUzZDY0NzZjZDY5NDZmYmI2Y2Y1NzIiLCJzaXplIjo1MiwidXJsIjoiaHR0cHM6Ly9yemltLm9ucmVuZGVyLmNvbS9kb3dubG9hZHMvZnJlZWZpcmUvMS43MC4wL2xvY2FsY29uZmlnLmpzb24iLCJjaHVua3MiOltdfX0=","signature":"DkeV1ipOPfCMdfkVhBdVnWl3qtkTmgz1+jMx/NCv2Te8HMHM/FMYC3NQUWDnbTaC//z9pc2uXr98Vocs2on61eE4Q3DcLrAp9yOBa2WOYSukuuVHKBPwd2LQd7ex/Uw/lWTl5tt7z+0lEih6aWmj+ILBWD4byAWq+Efan1zlhYbaxJyFzqRCYYd8Ugda6kJnMaJClOJaMvfOPYmKh+FjiKijn7LS8qPvw5hX5F2K/ha8dTG7TyGAnIIMcra6AGwSj/xLUXUtq949jiWNj0QiYn5ZrIZkzjYNRwHamIb4Rovsk/V7TI2OYxuzWwLIzczrKjVv1FZCJw3nJFai/5joihVVxfLlcPeBSkREaEX6DaVR6tK9UuISFPxQNzxG1S254ZuO4seL4Bvs2mGScD90nfkKw7B3jRO7wNSaA3tfAn+ESw2l++aeTTwNJ+HePFg27pSM4I/SsVRs/XIG5Pri4+slcW1XmxZ9fEBIpxZAAKwGltGunKlAyjPfDKqLuGFx"}'
+
 def resposta_controle(rota, environ):
     if rota.startswith("/signal/live"):
         return _rota_signal(rota)
     if rota == "/downloads/freefire/1.70.0/manifest.json":
         return _rota_manifest()
+    if rota == "/downloads/freefire/1.70.0/manifest-v2.json":
+        return _MANIFEST_V2.encode(), "application/json; charset=utf-8"
     if rota == "/downloads/freefire/1.70.0/localconfig.json":
         return LOCALCONFIG.encode(), "application/json"
     if rota.startswith("/access"):
