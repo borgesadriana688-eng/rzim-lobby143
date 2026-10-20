@@ -1547,7 +1547,7 @@ _PROXY_CAPTURE_FILE = "capture.jsonl"
 _PROXY_LOCK = _th.Lock()
 _PROXY_COOKIES = {}
 
-def _proxy_fwd(target, environ, body):
+def _proxy_fwd(target, environ, body, use_cookies=True):
     """Repassa o pedido ao servidor alvo e devolve (status, ctype, resp)."""
     req = _urc.Request(target, data=body if body else None,
                        method=environ.get("REQUEST_METHOD", "GET"))
@@ -1555,7 +1555,9 @@ def _proxy_fwd(target, environ, body):
         v = environ.get("HTTP_" + h.upper().replace("-", "_"))
         if v:
             req.add_header(h, v)
-    if _PROXY_COOKIES:
+    # rotas do painel de referencia vao SEM cookies: sessao antiga acumulada
+    # fazia o painel responder 400 com a pagina HTML de erro
+    if use_cookies and _PROXY_COOKIES:
         req.add_header("Cookie", "; ".join("%s=%s" % kv for kv in _PROXY_COOKIES.items()))
     try:
         r = _urc.urlopen(req, timeout=90)
@@ -1564,14 +1566,15 @@ def _proxy_fwd(target, environ, body):
         st, hdrs, resp = e.code, e.headers, e.read()
     except Exception as e:
         return 502, "text/plain", str(e).encode()[:200]
-    try:
-        for sc in (hdrs.get_all("Set-Cookie") or []):
-            kv = sc.split(";", 1)[0]
-            if "=" in kv:
-                k, v = kv.split("=", 1)
-                _PROXY_COOKIES[k.strip()] = v.strip()
-    except Exception:
-        pass
+    if use_cookies:
+        try:
+            for sc in (hdrs.get_all("Set-Cookie") or []):
+                kv = sc.split(";", 1)[0]
+                if "=" in kv:
+                    k, v = kv.split("=", 1)
+                    _PROXY_COOKIES[k.strip()] = v.strip()
+        except Exception:
+            pass
     return st, (hdrs.get("Content-Type") or "application/octet-stream"), resp
 
 def _proxy_save(rota, req, st, ct, resp):
@@ -1627,7 +1630,8 @@ def _proxy_handle(rota, environ, body):
     q = environ.get("QUERY_STRING") or ""
     if q:
         tgt += "?" + q
-    st, ct, resp = _proxy_fwd(tgt, environ, body)
+    _painel = tgt.startswith(PROXY_PANEL.rstrip("/"))
+    st, ct, resp = _proxy_fwd(tgt, environ, body, use_cookies=not _painel)
     print("[PONTE] %s -> %s | HTTP %s | %d bytes" % (p, tgt, st, len(resp)), flush=True)
     _proxy_save(p, body, st, ct, resp)
     return st, ct, resp
