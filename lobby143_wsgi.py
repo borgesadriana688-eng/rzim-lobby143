@@ -1614,6 +1614,16 @@ def _proxy_handle(rota, environ, body):
         tgt = PROXY_PANEL.rstrip("/") + p
     else:
         tgt = PROXY_GAME.rstrip("/") + p
+    # o painel de referencia rejeita (HTTP 400) pair_id desconhecido
+    # (o "rzim-pair" da nossa pagina local). Remove do registro/login.
+    if p in ("/api/register", "/api/login") and body:
+        try:
+            _j = json.loads(body.decode("utf-8"))
+            if isinstance(_j, dict) and "pair_id" in _j:
+                del _j["pair_id"]
+                body = json.dumps(_j).encode("utf-8")
+        except Exception:
+            pass
     q = environ.get("QUERY_STRING") or ""
     if q:
         tgt += "?" + q
