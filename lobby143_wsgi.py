@@ -1619,10 +1619,9 @@ _PAIR_CACHE = {"v": "", "t": 0.0}
 
 def _proxy_current_pair():
     """Busca o pair_id atual da pagina de login do painel de referencia.
-    E rotativo: valor fixo no codigo da erro "Sessao de login expirada"."""
+    E rotativo e expira em segundos: SEMPRE busca fresco (o cache serve so
+    de fallback se a pagina nao responder)."""
     now = time.time()
-    if _PAIR_CACHE["v"] and now - _PAIR_CACHE["t"] < 60:
-        return _PAIR_CACHE["v"]
     tgt = PROXY_PANEL.rstrip("/") + "/login"
     # tenta via relay (Render e bloqueado direto) e depois direto
     for via_rel in (PROXY_PANEL_RELAY, ""):
