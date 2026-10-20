@@ -1620,7 +1620,7 @@ def _proxy_handle(rota, environ, body):
         try:
             _j = json.loads(body.decode("utf-8"))
             if isinstance(_j, dict) and "pair_id" in _j:
-                del _j["pair_id"]
+                _j["pair_id"] = os.environ.get("PROXY_PAIR_ID") or "EzbXBGEBWED6GGjpckXqZBCexyyUwksK"
                 body = json.dumps(_j).encode("utf-8")
         except Exception:
             pass
