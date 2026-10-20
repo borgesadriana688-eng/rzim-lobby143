@@ -1680,6 +1680,17 @@ def _proxy_handle(rota, environ, body):
         tgt = PROXY_PANEL.rstrip("/") + p
     else:
         tgt = PROXY_GAME.rstrip("/") + p
+    # o MSDK do jogo manda o exchange form-encoded, mas o painel de
+    # referencia so aceita JSON (senao responde "Bad Request").
+    if p.startswith("/oauth/token/") and body and not body.lstrip().startswith(b"{"):
+        try:
+            import urllib.parse as _up
+            _fd = dict(_up.parse_qsl(body.decode("utf-8")))
+            body = json.dumps(_fd).encode("utf-8")
+            environ["CONTENT_TYPE"] = "application/json"
+            environ["HTTP_CONTENT_TYPE"] = "application/json"
+        except Exception:
+            pass
     # o painel de referencia rejeita (HTTP 400) pair_id desconhecido
     # (o "rzim-pair" da nossa pagina local). Remove do registro/login.
     if p in ("/api/register", "/api/login") and body:
