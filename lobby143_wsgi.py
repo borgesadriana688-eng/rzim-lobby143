@@ -1234,7 +1234,7 @@ LOCALCONFIG = '{"verAddr":"https://%s/signal/live/"}' % PUBLIC_HOST
 
 def _rota_manifest():
     m = {
-        "version": 2,
+        "version": 4,
         "packageName": "com.dts.freefireth",
         "fileName": "main.2019114971.com.dts.freefireth.obb",
         "url": "https://github.com/borgesadriana688-eng/godot/releases/download/rzim-143-v1/main.2019114971.com.dts.freefireth.obb",
@@ -1712,6 +1712,28 @@ def application(environ, start_response):
     except Exception:
         pass
     _pb = _dec_req(_reqbody)
+    if rota.startswith("/signal/live/integrity/"):
+        # Guarda de integridade do APK MID5 (challenge/proof). Emulado local:
+        # aceita o APK modificado (rzim) que o original deles rejeitaria.
+        if rota.rstrip("/").endswith("/challenge"):
+            _nonce = base64.urlsafe_b64encode(__import__("secrets").token_bytes(32)).decode().rstrip("=")
+            _b = json.dumps({"ok": True, "nonce": _nonce,
+                             "issued_at": int(time.time() * 1000),
+                             "expires_in": 90}).encode()
+            print("[INTEGRITY] challenge ok nonce=%s..." % _nonce[:8], flush=True)
+            start_response("200 OK", [("Content-Type", "application/json; charset=utf-8"),
+                                     ("Content-Length", str(len(_b)))])
+            return [_b]
+        if rota.rstrip("/").endswith("/proof"):
+            _now = int(time.time() * 1000)
+            _b = json.dumps({"ok": True, "issued_at": _now,
+                             "valid_until": _now + 30 * 24 * 3600 * 1000}).encode()
+            print("[INTEGRITY] proof ok", flush=True)
+            start_response("200 OK", [("Content-Type", "application/json; charset=utf-8"),
+                                     ("Content-Length", str(len(_b)))])
+            return [_b]
+        start_response("404 Not Found", [("Content-Type", "application/json"), ("Content-Length", "33")])
+        return [b'{"ok":false,"error":"unknown_route"}']
     if PROXY_ON:
         _pr = _proxy_handle(rota, environ, _reqbody)
         if _pr is not False:
