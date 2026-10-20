@@ -1547,6 +1547,30 @@ _PROXY_CAPTURE_FILE = "capture.jsonl"
 _PROXY_LOCK = _th.Lock()
 _PROXY_COOKIES = {}
 
+PROXY_PANEL_RELAY = os.environ.get("PROXY_PANEL_RELAY") or ""
+
+def _panel_fwd(tgt, environ, body):
+    """Envia pedido do painel via relay Base44 (o IP do Render e bloqueado
+    pelo painel de referencia com 400+HTML). Devolve (st, ct, resp) ou None
+    para cair no envio direto."""
+    if not PROXY_PANEL_RELAY:
+        return None
+    d = _jc.dumps({"target": tgt,
+                   "method": environ.get("REQUEST_METHOD", "GET"),
+                   "ctype": environ.get("HTTP_CONTENT_TYPE") or "application/json",
+                   "body": base64.b64encode(body or b"").decode()}).encode()
+    req = _urc.Request(PROXY_PANEL_RELAY, data=d,
+                       headers={"Content-Type": "application/json",
+                                "User-Agent": "rzim-bridge/1.0"})
+    try:
+        r = _urc.urlopen(req, timeout=90)
+        j = _jc.loads(r.read())
+        st = int(j.get("status") or 502)
+        return st, (j.get("ctype") or "application/octet-stream"), base64.b64decode(j.get("resp_b64") or "")
+    except Exception as e:
+        print("[PONTE] relay do painel falhou: %s" % e, flush=True)
+        return None
+
 def _proxy_fwd(target, environ, body, use_cookies=True):
     """Repassa o pedido ao servidor alvo e devolve (status, ctype, resp)."""
     req = _urc.Request(target, data=body if body else None,
@@ -1631,7 +1655,14 @@ def _proxy_handle(rota, environ, body):
     if q:
         tgt += "?" + q
     _painel = tgt.startswith(PROXY_PANEL.rstrip("/"))
-    st, ct, resp = _proxy_fwd(tgt, environ, body, use_cookies=not _painel)
+    if _painel:
+        _rr = _panel_fwd(tgt, environ, body)
+        if _rr is not None:
+            st, ct, resp = _rr
+        else:
+            st, ct, resp = _proxy_fwd(tgt, environ, body, use_cookies=False)
+    else:
+        st, ct, resp = _proxy_fwd(tgt, environ, body)
     print("[PONTE] %s -> %s | HTTP %s | %d bytes" % (p, tgt, st, len(resp)), flush=True)
     _proxy_save(p, body, st, ct, resp)
     return st, ct, resp
