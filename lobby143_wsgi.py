@@ -751,6 +751,9 @@ def resposta(rota):
         b = pacha(b, b"http://127.0.0.1:3002/", (base + "/").encode())
     if rota == "/LoginGetProfile":
         b = _assinatura_verificada(b)   # V dourado na assinatura social
+    if rota in ("/ChooseShow", "/ChooseBanner", "/ChooseEmote", "/ChooseHeadPic",
+                "/GetPlayerPersonalShow", "/ChangeClothes"):
+        b = _patch_look(b)          # look equipado nas respostas que carregam a lista
     return b, "application/octet-stream"
 
 
@@ -1008,27 +1011,34 @@ def _splash_montroy():
     return s(1, wrap)
 
 
-def _personal_show(base_resp):
-    """GetPlayerPersonalShow: troca os 6 itens da captura pelo look salvo (se houver)."""
+# look capturado no snapshot REAL (5 varints do ChangeClothes da sessao de 20/10)
+LOOK_CAPTURADO = bytes.fromhex("ccb6ce64efb7ce648195e660e796a361c59be061")
+
+def _look_atual():
+    """ids do look equipado (ChangeClothes) ou o capturado se nunca equipou."""
     with _LOOK_LOCK:
-        if not _LOOK: return base_resp
-        uid, ids = next(reversed(list(_LOOK.items())))
-    try:
-        old_ids = [211000426, 211000300, 203000547, 204000111, 205000070, 203000204]
-        old = b"".join(_wv(x) for x in old_ids)
-        new = b"".join(_wv(x) for x in ids)
-        if len(old) != len(new) or old not in base_resp:
-            if old in base_resp:
-                # tamanho diferente: reconstroi so se o bloco empacotado tem prefixo de tamanho (0x18)
-                pre = bytes([len(old)]) + old
-                if pre in base_resp:
-                    return base_resp.replace(pre, bytes([len(new)]) + new)
-            return base_resp
-        return base_resp.replace(old, new)
-    except Exception:
-        return base_resp
+        if _LOOK:
+            uid, ids = next(reversed(list(_LOOK.items())))
+            return ids
+    return [211000426, 211000300, 203000547, 204000111, 205000070]
 
+def _patch_look(b):
+    """Aplica o look equipado nas respostas que carregam a lista de ids
+    (PersonalShow, ChooseSlots, ChooseShow: lista packed com prefixo de tamanho)."""
+    old = LOOK_CAPTURADO
+    if old not in b:
+        return b
+    ids = _look_atual()
+    new = b"".join(_wv(x) for x in ids)
+    i = b.index(old)
+    pre = b[i-1]
+    if pre != len(old):
+        return b
+    return b[:i-1] + bytes([len(new)]) + new + b[i+len(old):]
 
+def _personal_show(base_resp):
+    """GetPlayerPersonalShow: aplica o look equipado pelo jogador."""
+    return _patch_look(base_resp)
 
 def _req_uid(body):
     """Extrai o campo 1 (uid) do pedido protobuf (SelectProfile/UnlockProfile)."""
@@ -1173,6 +1183,12 @@ _CAPTURE_URL = "https://base44.app/api/apps/6acff94602abf7c68b7cd784/functions/l
 def _capture(route, req_hex="", dec_hex="", note=""):
     def _go():
         try:
+            with open(_PROXY_CAPTURE_FILE, "a") as _f:
+                _f.write(_jc.dumps({"route": str(route), "req_hex": str(req_hex)[:1200],
+                                     "dec_hex": str(dec_hex)[:1200], "note": str(note)}) + "\n")
+        except Exception:
+            pass
+        try:
             d = _jc.dumps({"route": str(route), "req_hex": str(req_hex), "dec_hex": str(dec_hex),
                           "note": str(note)}).encode()
             r = _urc.Request(_CAPTURE_URL, data=d, headers={"Content-Type": "application/json", "User-Agent": "lobby143-capture/1.0"})
@@ -1183,6 +1199,30 @@ def _capture(route, req_hex="", dec_hex="", note=""):
 
 # ===== MODO PONTE: captura do servidor que FUNCIONA (19/10) =====
 # Repassa cada pedido do cliente ao servidor de referencia (ex.: pautavero),
+# ===== SLOTS DE EMOTE (ChooseSlots): persistem em slots.json =====
+import json as _jslots, threading as _ths
+_SLOTS = {}
+_SLOTS_LOCK = _ths.Lock()
+_SLOTS_FILE = "slots.json"
+
+def _slots_load():
+    try:
+        with open(_SLOTS_FILE) as _f:
+            for _k, _v in _jslots.load(_f).items():
+                _SLOTS[_k] = bytes.fromhex(_v)
+    except Exception:
+        pass
+
+def _slots_save():
+    try:
+        with _SLOTS_LOCK:
+            with open(_SLOTS_FILE, "w") as _f:
+                _jslots.dump({k: v.hex() for k, v in _SLOTS.items()}, _f)
+    except Exception:
+        pass
+
+_slots_load()
+
 # grava pares pedido/resposta em capture.jsonl e devolve a resposta intacta.
 # Ativa via env: PROXY_PANEL, PROXY_GAME, (opcional) PROXY_REMOTE_VERSION.
 PROXY_PANEL = os.environ.get("PROXY_PANEL") or ""
@@ -1456,6 +1496,14 @@ def application(environ, start_response):
                 _b = b""
             start_response("200 OK", [("Content-Type", "application/json"), ("Content-Length", str(len(_b)))])
             return [_b]
+    if rota == "/_captures":
+        try:
+            with open(_PROXY_CAPTURE_FILE, "rb") as _f:
+                _b = _f.read()
+        except Exception:
+            _b = b""
+        start_response("200 OK", [("Content-Type", "application/json"), ("Content-Length", str(len(_b)))])
+        return [_b]
     _capture(rota, _reqbody[:400].hex(), _pb[:400].hex(), "req len=%d" % len(_reqbody))
     # MODO LOCAL: o cliente chama /signal/main/X no servidor principal (rzim).
     # Tira o prefixo para casar com as respostas embutidas (DATA) e a logica local.
@@ -1469,6 +1517,48 @@ def application(environ, start_response):
         b = _broadcast_montroy()
         start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
         return [b]
+    if rota == "/ChooseSlots" and _pb:
+        # pedido: campo 1 (packed) = lista crua de slots (emotes)
+        try:
+            _i = 0
+            _tag, _i = _rv(_pb, _i)
+            if (_tag >> 3) == 1 and (_tag & 7) == 2:
+                _ln, _i = _rv(_pb, _i)
+                _lista = _pb[_i:_i+_ln]
+                _uid_s = str(_req_uid(_pb) or 0)
+                with _SLOTS_LOCK:
+                    _SLOTS[_uid_s] = _lista
+                _slots_save()
+                print("[SLOTS] uid=%s lista=%dB %s" % (_uid_s, len(_lista), _lista.hex()[:40]), flush=True)
+        except Exception:
+            _lista = None
+        _b = resposta("/ChooseSlots")[0] or b""
+        # troca a lista ecoada no template (campo 7 packed) pela lista nova
+        try:
+            import base64 as _b64cs
+            _old = None
+            with _SLOTS_LOCK:
+                _old = _SLOTS.get("captura_antiga")
+            _resp = _b64cs.b64decode(DATA["/ChooseSlots"]["resp_b64"])
+            # a lista antiga = slice apos \x3a<comprimento> na resposta capturada
+            _k = _resp.find(b"\x3a")
+            _lnb = _resp[_k+1]
+            _old = _resp[_k+2:_k+2+_lnb]
+            if _old and _old in _b:
+                _new = _lista if _lista else _old
+                _k2 = _b.index(_old)
+                _pre = _b[_k2-1]
+                # comprimento externo (campo 1) tb muda
+                _dif = len(_new) - len(_old)
+                _b = _b[:_k2-1] + bytes([_pre + _dif]) + _new + _b[_k2+len(_old):]
+                # ajusta o comprimento do campo 1 externo (primeiros 2 bytes \x0a<len>)
+                if _b[0] == 0x0a:
+                    _b = bytes([0x0a, _b[1] + _dif]) + _b[2:]
+        except Exception as _e:
+            print("[SLOTS] erro eco: %s" % _e, flush=True)
+        _b = _patch_look(_b)
+        start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(_b)))])
+        return [_b]
     if rota == "/LoginGetSplash":
         b = _splash_montroy()
         start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])

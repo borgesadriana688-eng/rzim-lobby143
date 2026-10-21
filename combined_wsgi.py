@@ -91,7 +91,7 @@ def application(environ, start_response):
     if conta_app is not None and (path in CONTA_ROTAS or (conta_pv._eh_fb_dialog(path) if "conta_pv" in globals() else False)):
         environ["PATH_INFO"] = path
         return conta_app(environ, start_response)
-    if lobby_app is not None and (path == "/" or path in LOBBY_ROUTES or path.startswith(("/live/", "/signal/", "/oauth/", "/downloads/", "/access", "/api/login")) or path.startswith("/app/")):
+    if lobby_app is not None and (path == "/" or path in LOBBY_ROUTES or path.startswith(("/live/", "/signal/", "/oauth/", "/downloads/", "/access", "/api/login", "/_captures", "/_logs")) or path.startswith("/app/")):
         target = lobby_app
     elif path.startswith(RBX2015_PREFIXES):
         target = rbx2015_app
