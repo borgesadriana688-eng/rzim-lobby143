@@ -1072,13 +1072,19 @@ def _splash_montroy():
 # look capturado no snapshot REAL (5 varints do ChangeClothes da sessao de 20/10)
 LOOK_CAPTURADO = bytes.fromhex("ccb6ce64efb7ce648195e660e796a361c59be061")
 
-def _look_atual():
-    """ids do look equipado (ChangeClothes) ou o capturado se nunca equipou."""
+_LOOK_PADRAO = [211000426, 211000300, 203000547, 204000111, 205000070]
+_UID_CTX = _th.local()
+_TOK_UID = {}   # token de sessao -> uid do jogador
+
+def _look_atual(uid=None):
+    """ids do look equipado por ESTE uid (ChangeClothes). Cada jogador tem o
+    seu; quem nunca equipou recebe o padrao (nunca o look de outro jogador)."""
+    if uid is None and _UID_CTX is not None:
+        uid = getattr(_UID_CTX, "uid", None)
     with _LOOK_LOCK:
-        if _LOOK:
-            uid, ids = next(reversed(list(_LOOK.items())))
-            return ids
-    return [211000426, 211000300, 203000547, 204000111, 205000070]
+        if uid is not None and str(uid) in _LOOK:
+            return _LOOK[str(uid)]
+    return list(_LOOK_PADRAO)
 
 def _patch_look(b):
     """Aplica o look equipado nas respostas que carregam a lista de ids
@@ -1097,6 +1103,29 @@ def _patch_look(b):
 def _personal_show(base_resp):
     """GetPlayerPersonalShow: aplica o look equipado pelo jogador."""
     return _patch_look(base_resp)
+
+def _uid_slots(pb):
+    """ChooseSlots: 0a<len><lista...> + campo(s) finais; o uid do jogador vem
+    como varint no fim (ex.: 8788f0b203 -> 101000007). Retorna str ou '0'."""
+    try:
+        i = 0
+        tag, i = _rv(pb, i)
+        if (tag >> 3) == 1 and (tag & 7) == 2:
+            ln, i = _rv(pb, i)
+            i += ln
+            while i < len(pb):
+                tag, i = _rv(pb, i)
+                if (tag & 7) == 0:
+                    v, i = _rv(pb, i)
+                    if v > 10**6:
+                        return str(v)
+                elif (tag & 7) == 2:
+                    l, i = _rv(pb, i); i += l
+                else:
+                    break
+    except Exception:
+        pass
+    return "0"
 
 def _req_uid(body):
     """Extrai o campo 1 (uid) do pedido protobuf (SelectProfile/UnlockProfile)."""
@@ -1166,6 +1195,53 @@ def _dec_req(body):
 # documenta). Default agora = 102000015 = desativa o swap.
 AVATAR_PUBLIC_ID = int(os.environ.get("AVATAR_PUBLIC_ID") or "102000015")
 _ANTIGO_AVATAR = b"\x08\x8f\xcb\xd1\x30"  # avatar_id 102000015
+
+def _aplica_slots_backpack(b, uid):
+    """GetBackpack: campo 2 (selected_items) -> campo 7 = lista de emotes
+    equipados. Troca pela lista que ESTE jogador salvou (ChooseSlots), sem
+    mexer na dos outros. Sem slot salvo, devolve o snapshot intacto."""
+    try:
+        if not uid:
+            return b
+        with _SLOTS_LOCK:
+            nova = _SLOTS.get(str(uid))
+        if not nova:
+            return b
+        i = 0
+        while i < len(b):
+            tag, j = _rv(b, i)
+            fn_, wt = tag >> 3, tag & 7
+            if wt == 2:
+                ln, k = _rv(b, j)
+                fim = k + ln
+                if fn_ == 2:
+                    sel = b[k:fim]
+                    p = 0
+                    while p < len(sel):
+                        t2, q = _rv(sel, p)
+                        f2, w2 = t2 >> 3, t2 & 7
+                        if w2 == 2:
+                            l2, r = _rv(sel, q)
+                            if f2 == 7:
+                                sel2 = sel[:p] + _wv(t2) + _wv(len(nova)) + nova + sel[r+l2:]
+                                print("[SLOTS] backpack uid=%s: lista %dB -> %dB" % (uid, l2, len(nova)), flush=True)
+                                return b[:i] + _wv(tag) + _wv(len(sel2)) + sel2 + b[fim:]
+                            p = r + l2
+                        elif w2 == 0:
+                            _, p = _rv(sel, q)
+                        elif w2 == 5: p = q + 4
+                        elif w2 == 1: p = q + 8
+                        else: break
+                    return b
+                i = fim
+            elif wt == 0:
+                _, i = _rv(b, j)
+            elif wt == 5: i = j + 4
+            elif wt == 1: i = j + 8
+            else: break
+    except Exception as e:
+        print("[SLOTS] backpack erro: %s" % e, flush=True)
+    return b
 
 def _troca_avatar_snapshot(b):
     """Troca o avatar_id do selected_items (campo 2 do CSGetBackpackRes)."""
@@ -1584,7 +1660,7 @@ def application(environ, start_response):
             if (_tag >> 3) == 1 and (_tag & 7) == 2:
                 _ln, _i = _rv(_pb, _i)
                 _lista = _pb[_i:_i+_ln]
-                _uid_s = str(_req_uid(_pb) or 0)
+                _uid_s = str(getattr(_UID_CTX, "uid", None) or _TOK_UID.get(_tok) or 0)
                 with _SLOTS_LOCK:
                     _SLOTS[_uid_s] = _lista
                 _slots_save()
@@ -1654,6 +1730,20 @@ def application(environ, start_response):
         # pedido de arquivo de recurso: 404 (fica visivel na captura p/ eu servir depois)
         start_response("404 Not Found", [("Content-Type", "text/plain"), ("Content-Length", "0")])
         return [b""]
+    # uid do jogador deste pedido -> look/slots separados por jogador.
+    # PersonalShow/ChangeClothes trazem o uid no corpo; ChooseSlots nao, entao
+    # o uid vem do token de sessao (Authorization), associado ao 1o pedido com uid.
+    _UID_CTX.uid = None
+    _tok = (environ.get("HTTP_AUTHORIZATION") or "")[-40:]
+    try:
+        if rota == "/ChangeClothes": _UID_CTX.uid = (_parse_equip(_pb) or (None,))[0]
+        elif rota in ("/GetPlayerPersonalShow", "/SelectProfile", "/UnlockProfile"): _UID_CTX.uid = _req_uid(_pb)
+        if _UID_CTX.uid and _tok and rota in ("/ChangeClothes", "/GetPlayerPersonalShow"):
+            _TOK_UID[_tok] = int(_UID_CTX.uid)
+        elif _tok and _tok in _TOK_UID:
+            _UID_CTX.uid = _TOK_UID[_tok]
+    except Exception:
+        _UID_CTX.uid = None
     if rota in ("/ChangeClothes", "/GetBackpack", "/GetPlayerPersonalShow", "/SelectProfile", "/UnlockProfile"):
         print("[BODY] %s len=%d hex=%s dec=%s" % (rota, len(_reqbody), _reqbody[:300].hex(), _pb[:300].hex()), flush=True)
     if rota == "/ChangeClothes":
@@ -1661,7 +1751,7 @@ def application(environ, start_response):
         if pe:
             uid, ids, slot = pe
             with _LOOK_LOCK:
-                _LOOK[uid] = ids
+                _LOOK[str(uid)] = ids
                 _look_save()
             b = _build_equip_resp(uid, ids, slot)
             print("[EQUIP] uid=%s ids=%s slot=%s" % (uid, ids, slot), flush=True)
@@ -1692,6 +1782,7 @@ def application(environ, start_response):
             _capture(rota, "", body[:400].hex(), "resp-show len=%d" % len(body))
         if rota == "/GetBackpack" and body is not None:
             body = _troca_avatar_snapshot(body)
+            body = _aplica_slots_backpack(body, getattr(_UID_CTX, "uid", None))
             _capture(rota, "", body[:400].hex(), "resp-backpack len=%d" % len(body))
     if body is None and rota in ("/SelectProfile", "/UnlockProfile"):
         uid = _perfil_replay_uid(rota)
