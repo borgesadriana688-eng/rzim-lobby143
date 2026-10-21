@@ -610,17 +610,79 @@ ABHOT_FILEINFO_B64 = "Z2FtZWFzc2V0YnVuZGxlcyxiUmtvNStCNFcvU0JSTk9NTTZYRVBaZFExWn
 
 DATA = json.loads(zlib.decompress(base64.b64decode(DATA_B64)))
 # ===== NICK: substitui o nome da captura (mesmo comprimento, 10 bytes) =====
-def _nick_verificado(b):
-    """V badge oficial do FF: codigo de texto rico DOURADO na assinatura
-    (campos 9/10 do PersonalShow). Nick fica limpo, sem emoji."""
-    import re as _re
-    VB = b"[b][c][FFD319]\xe2\x93\x8b"          # [b][c][FFD319] circled V
-    def _sub(m):
-        tag = m.group(1)
-        return tag + bytes([len(VB)]) + VB
-    # campos 9 e 10 vazios (tag + \x00) recebem o codigo do V dourado
-    b = _re.sub(rb'(\x4a|\x52)\x00', _sub, b, count=2)
-    return b
+def _rd_var(bb, i):
+    r_ = 0; s_ = 0
+    while True:
+        x = bb[i]; i += 1
+        r_ |= (x & 0x7f) << s_; s_ += 7
+        if not x & 0x80: return r_, i
+
+def _pb_parse(b):
+    """Parser estrito: lista [(campo, wiretype, valor)] ou None."""
+    try:
+        i = 0; out = []
+        while i < len(b):
+            k, i = _rd_var(b, i); f, w = k >> 3, k & 7
+            if f == 0 or w in (3, 4, 6, 7): return None
+            if w == 0:
+                v, i = _rd_var(b, i); out.append([f, 0, v])
+            elif w == 2:
+                l, i = _rd_var(b, i)
+                if i + l > len(b): return None
+                out.append([f, 2, b[i:i+l]]); i += l
+            elif w == 5: out.append([f, 5, b[i:i+4]]); i += 4
+            else: out.append([f, 1, b[i:i+8]]); i += 8
+        return out
+    except Exception:
+        return None
+
+def _pb_ser(fs):
+    out = b""
+    for f, w, v in fs:
+        tag = f << 3 | w
+        tb = b""; n = tag
+        while True:
+            x = n & 0x7f; n >>= 7
+            tb += bytes([x | (0x80 if n else 0)])
+            if not n: break
+        if w == 0:
+            n = v
+            while True:
+                x = n & 0x7f; n >>= 7
+                out += tb + bytes([x | (0x80 if n else 0)])
+                tb = b""
+                if not n: break
+        elif w == 2:
+            n = len(v); lb = b""
+            while True:
+                x = n & 0x7f; n >>= 7
+                lb += bytes([x | (0x80 if n else 0)])
+                if not n: break
+            out += tb + lb + v
+        else:
+            out += tb + v
+    return out
+
+V_BADGE = b"[b][c][FFD319]\xe2\x93\x8b"       # V dourado (circled V, FFD319)
+
+def _assinatura_verificada(b):
+    """LoginGetProfile: escreve o V badge na assinatura social (bloco do
+    jogador, campo 2 = string vazia). Parse estrito -> edita -> reserializa."""
+    fs = _pb_parse(b)
+    if not fs: return b
+    for top in fs:
+        if top[0] == 3 and top[1] == 2:
+            bloco = _pb_parse(top[2])
+            if not bloco: continue
+            alvo = False
+            for c in bloco:
+                if c[0] == 1 and c[1] == 0 and c[2] == 1300000001: alvo = True
+            if not alvo: continue
+            for c in bloco:
+                if c[0] == 2 and c[1] == 2 and c[2] == b"":
+                    c[2] = V_BADGE
+            top[2] = _pb_ser(bloco)
+    return _pb_ser(fs)
 
 def _patch_nicks():
     for _r, _d in DATA.items():
@@ -687,8 +749,8 @@ def resposta(rota):
         b = pacha(b, b"http://127.0.0.1:000018002", base.encode())
     elif rota == "/GetLoginData":
         b = pacha(b, b"http://127.0.0.1:3002/", (base + "/").encode())
-    if rota == "/GetPlayerPersonalShow":
-        b = _nick_verificado(b)     # V dourado so na assinatura do perfil
+    if rota == "/LoginGetProfile":
+        b = _assinatura_verificada(b)   # V dourado na assinatura social
     return b, "application/octet-stream"
 
 
