@@ -740,10 +740,12 @@ def resposta(rota):
     b = base64.b64decode(d["resp_b64"])
     # FIX: troca o endereco fixo do servidor de jogo pelo configurado no env
     if GAME_PUBLIC_HOST != "179.198.108.48":
+        _h103 = os.environ.get("GAME_HOST_10300") or GAME_PUBLIC_HOST
+        _h102 = os.environ.get("GAME_HOST_10200") or GAME_PUBLIC_HOST
         _p103 = os.environ.get("GAME_PORT_10300") or "10300"
         _p102 = os.environ.get("GAME_PORT_10200") or "10200"
-        b = pacha(b, b"179.198.108.48:10300", ("%s:%s" % (GAME_PUBLIC_HOST, _p103)).encode())
-        b = pacha(b, b"179.198.108.48:10200", ("%s:%s" % (GAME_PUBLIC_HOST, _p102)).encode())
+        b = pacha(b, b"179.198.108.48:10300", ("%s:%s" % (_h103, _p103)).encode())
+        b = pacha(b, b"179.198.108.48:10200", ("%s:%s" % (_h102, _p102)).encode())
         b = pacha(b, b"179.198.108.48:12100", GAME_PUBLIC_ADDR.encode())
         b = pacha(b, b"179.198.108.48:12101", ("%s:12101" % GAME_PUBLIC_HOST).encode())
         b = pacha(b, b"179.198.108.48", GAME_PUBLIC_HOST.encode())
