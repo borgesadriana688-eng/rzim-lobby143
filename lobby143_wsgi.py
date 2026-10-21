@@ -610,6 +610,14 @@ ABHOT_FILEINFO_B64 = "Z2FtZWFzc2V0YnVuZGxlcyxiUmtvNStCNFcvU0JSTk9NTTZYRVBaZFExWn
 
 DATA = json.loads(zlib.decompress(base64.b64decode(DATA_B64)))
 # ===== NICK: substitui o nome da captura (mesmo comprimento, 10 bytes) =====
+def _nick_verificado(b):
+    """Selo 'verificado' do FF: acrescenta o check verde ao nick do jogador
+    nas respostas (lobby, chat, perfil). Casa apenas o nick EXATO (string
+    protobuf isolada de 8 bytes), nunca o open_id 'local:bryanzim'."""
+    import re as _re
+    return _re.sub(rb'([\x0a\x12\x1a\x22\x2a\x32\x3a\x42\x4a\x52])\x08bryanzim',
+                  lambda m: m.group(1) + b'\x0c' + b'bryanzim \xe2\x9c\x85', b)
+
 def _patch_nicks():
     for _r, _d in DATA.items():
         if isinstance(_d, dict) and "resp_b64" in _d:
@@ -675,6 +683,7 @@ def resposta(rota):
         b = pacha(b, b"http://127.0.0.1:000018002", base.encode())
     elif rota == "/GetLoginData":
         b = pacha(b, b"http://127.0.0.1:3002/", (base + "/").encode())
+    b = _nick_verificado(b)
     return b, "application/octet-stream"
 
 
