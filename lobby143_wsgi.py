@@ -832,6 +832,24 @@ def _build_equip_resp(uid, ids, slot):
     inner = b"\x08" + _wv(uid) + b"\x10\x01\x18" + _wv(slot) + b"\x22" + _wv(len(packed)) + packed + b"\x2a\x05\x08\x00\x10\x9e\x11\x30\x01"
     return b"\x0a" + _wv(len(inner)) + inner
 
+IPTAG_ICON_URL = ("https://base44.app/api/apps/6ad692e379c2a6e77cbe0722/files/mp/public/"
+                  "6ad692e379c2a6e77cbe0722/59e3e9118_iptag_verificado.png")
+
+def _iptag_config():
+    """Selos de verificado (IPTag): config servida local com o selo do montroy.
+    Estrutura do desc: {1: ip_tag_icon(url), 2: is_hide} + base {3: id, 4: nome}."""
+    def _wv(n):
+        out = b""
+        while True:
+            x = n & 0x7f; n >>= 7
+            out += bytes([x | (0x80 if n else 0)])
+            if not n: return out
+    def _s(f, v): return bytes([f << 3 | 2]) + _wv(len(v)) + v
+    def _v(f, n): return bytes([f << 3]) + _wv(n)
+    desc = (_s(1, IPTAG_ICON_URL.encode()) + _v(2, 0)
+            + _v(3, 1) + _s(4, b"Montroy Verificado") + _v(5, 1))
+    return _s(1, desc)      # ip_tag_config (repeated): 1 entrada
+
 def _broadcast_montroy():
     """Letreiro do lobby (LoginGetBroadcast): mesma ESTRUTURA byte a byte da
     resposta real que funcionava (156B), so com o texto do Bryan no lugar.
@@ -1367,6 +1385,10 @@ def application(environ, start_response):
     # Tira o prefixo para casar com as respostas embutidas (DATA) e a logica local.
     if rota.startswith("/signal/main/"):
         rota = "/" + rota[len("/signal/main/"):]
+    if rota == "/GetIPTagConfig":
+        b = _iptag_config()
+        start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
+        return [b]
     if rota == "/LoginGetBroadcast":
         b = _broadcast_montroy()
         start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
