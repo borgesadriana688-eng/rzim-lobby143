@@ -833,25 +833,73 @@ def _build_equip_resp(uid, ids, slot):
     return b"\x0a" + _wv(len(inner)) + inner
 
 def _broadcast_montroy():
-    """Letreiro do lobby (LoginGetBroadcast): texto do Bryan.
-    Espelha a estrutura exata da resposta real (que funcionava) com as
-    strings trocadas; sem creditos de terceiros."""
-    def _wv(n):
+    """Letreiro do lobby (LoginGetBroadcast): mesma ESTRUTURA byte a byte da
+    resposta real que funcionava (156B), so com o texto do Bryan no lugar.
+    Strings novas + timestamps renovados, resto preservado."""
+    def _rdv(b, i):
+        r = 0; sh = 0
+        while True:
+            x = b[i]; i += 1
+            r |= (x & 0x7f) << sh; sh += 7
+            if not x & 0x80: return r, i
+    def _wrv(n):
         out = b""
         while True:
             x = n & 0x7f; n >>= 7
             out += bytes([x | (0x80 if n else 0)])
             if not n: return out
-    def _s(f, v): return bytes([f << 3 | 2]) + _wv(len(v)) + v
-    def _v(f, n): return bytes([f << 3]) + _wv(n)
-    texto = "Bem vindo ao montroy Server, desenvolvido por Brayan".encode()
+    MARQUEE = "Bem vindo ao montroy Server, desenvolvido por Brayan".encode()
+    SISMSG = "Servidor montroy \xe2\x80\x94 desenvolvido por Brayan".encode()
     agora = int(time.time() * 1000)
-    msg_system = (_s(1, b"System") + _v(2, 0)
-                  + _s(3, texto) + _v(4, 0) + _v(5, agora) + _v(6, 1))
-    b = (_s(1, _s(1, _s(1, b"pt-BR") + _s(3, texto)) + _s(2, msg_system))
-         + _s(2, msg_system)
-         + _v(4, 0) + _v(5, agora) + _v(6, 1) + _v(2, 0))
-    return b
+
+    def _campos(b):
+        out = []; i = 0
+        while i < len(b):
+            try: k, i = _rdv(b, i)
+            except Exception: return None
+            f, w = k >> 3, k & 7
+            if w == 0:
+                v, i = _rdv(b, i); out.append((f, 'v', v))
+            elif w == 2:
+                l, i = _rdv(b, i)
+                if i + l > len(b): return None
+                out.append((f, 'b', b[i:i+l])); i += l
+            elif w == 5: out.append((f, 'f', b[i:i+4])); i += 4
+            elif w == 1: out.append((f, 'd', b[i:i+8])); i += 8
+            else: return None
+        return out
+
+    def _reb(b):
+        fs = _campos(b)
+        if fs is None: return None
+        out = b""
+        for f, t, v in fs:
+            if t == 'v':
+                if v > 10**11: v = agora        # timestamp em ms -> renova
+                out += _wrv((f << 3)) + _wrv(v)
+            elif t == 'b':
+                sub = _reb(v)
+                if sub is not None:
+                    out += _wrv((f << 3) | 2) + _wrv(len(sub)) + sub
+                else:
+                    nv = v
+                    if v == b"MID 5 PRIVATE - PRIVATE SERVER \xe2\x80\xa2 KEY DURATION: EXPIRADA - ATIVE SUA CONTA":
+                        nv = MARQUEE
+                    elif v == b"Criado por ZRIDER, GUSTAVINNM, WELL":
+                        nv = SISMSG
+                    out += _wrv((f << 3) | 2) + _wrv(len(nv)) + nv
+            elif t == 'f': out += _wrv((f << 3) | 5) + v
+            else: out += _wrv((f << 3) | 1) + v
+        return out
+
+    try:
+        d = DATA.get("/LoginGetBroadcast") or {}
+        base_b = base64.b64decode(d.get("resp_b64") or "")
+        nb = _reb(base_b)
+        if nb: return nb
+    except Exception:
+        pass
+    return base_b
 
 def _splash_montroy():
     """LoginGetSplash: sem imagem de banner MID5 e sem link. Item de anuncio so com texto MONTROY."""
