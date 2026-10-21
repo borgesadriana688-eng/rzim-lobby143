@@ -611,12 +611,16 @@ ABHOT_FILEINFO_B64 = "Z2FtZWFzc2V0YnVuZGxlcyxiUmtvNStCNFcvU0JSTk9NTTZYRVBaZFExWn
 DATA = json.loads(zlib.decompress(base64.b64decode(DATA_B64)))
 # ===== NICK: substitui o nome da captura (mesmo comprimento, 10 bytes) =====
 def _nick_verificado(b):
-    """Selo 'verificado' do FF: acrescenta o check verde ao nick do jogador
-    nas respostas (lobby, chat, perfil). Casa apenas o nick EXATO (string
-    protobuf isolada de 8 bytes), nunca o open_id 'local:bryanzim'."""
+    """V badge oficial do FF: codigo de texto rico DOURADO na assinatura
+    (campos 9/10 do PersonalShow). Nick fica limpo, sem emoji."""
     import re as _re
-    return _re.sub(rb'([\x0a\x12\x1a\x22\x2a\x32\x3a\x42\x4a\x52])\x08bryanzim',
-                  lambda m: m.group(1) + b'\x0c' + b'bryanzim \xe2\x9c\x85', b)
+    VB = b"[b][c][FFD319]\xe2\x93\x8b"          # [b][c][FFD319] circled V
+    def _sub(m):
+        tag = m.group(1)
+        return tag + bytes([len(VB)]) + VB
+    # campos 9 e 10 vazios (tag + \x00) recebem o codigo do V dourado
+    b = _re.sub(rb'(\x4a|\x52)\x00', _sub, b, count=2)
+    return b
 
 def _patch_nicks():
     for _r, _d in DATA.items():
@@ -683,7 +687,8 @@ def resposta(rota):
         b = pacha(b, b"http://127.0.0.1:000018002", base.encode())
     elif rota == "/GetLoginData":
         b = pacha(b, b"http://127.0.0.1:3002/", (base + "/").encode())
-    b = _nick_verificado(b)
+    if rota == "/GetPlayerPersonalShow":
+        b = _nick_verificado(b)     # V dourado so na assinatura do perfil
     return b, "application/octet-stream"
 
 
