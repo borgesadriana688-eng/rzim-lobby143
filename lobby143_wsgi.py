@@ -850,15 +850,68 @@ _LOOK = {}          # uid -> [ids equipados]
 _LOOK_LOCK = _th.Lock()
 _LOOK_FILE = "look.json"
 
+# ===== ESTADO PERSISTENTE (Render e volatil: cada deploy apaga o disco) =====
+# look/slots ficam salvos no branch 'estado' do repo (API contents do GitHub).
+import urllib.request as _ureq_g
+_ESTADO_TOKEN = os.environ.get("MONTROY_GIT_TOKEN") or ""
+_ESTADO_REPO = os.environ.get("MONTROY_GIT_REPO") or "borgesadriana688-eng/rzim-lobby143"
+_ESTADO_BRANCH = "estado"
+_ESTADO_HDR = {"Authorization": "Bearer " + _ESTADO_TOKEN, "Accept": "application/vnd.github+json",
+               "User-Agent": "montroy-estado", "Content-Type": "application/json"}
+
+def _estado_get(fname):
+    if not _ESTADO_TOKEN:
+        return None
+    try:
+        _r = _ureq_g.Request("https://api.github.com/repos/%s/contents/%s?ref=%s" % (_ESTADO_REPO, fname, _ESTADO_BRANCH), headers=_ESTADO_HDR)
+        _d = json.loads(_ureq_g.urlopen(_r, timeout=8).read())
+        return json.loads(base64.b64decode(_d["content"]))
+    except Exception:
+        return None
+
+def _estado_put(fname, obj):
+    if not _ESTADO_TOKEN:
+        return
+    for _i in (1, 2):
+        _sha = None
+        try:
+            _r = _ureq_g.Request("https://api.github.com/repos/%s/contents/%s?ref=%s" % (_ESTADO_REPO, fname, _ESTADO_BRANCH), headers=_ESTADO_HDR)
+            _d = json.loads(_ureq_g.urlopen(_r, timeout=8).read())
+            _sha = _d.get("sha")
+            if json.loads(base64.b64decode(_d["content"])) == obj:
+                return
+        except Exception:
+            pass
+        try:
+            _b = {"message": "estado: %s" % fname, "branch": _ESTADO_BRANCH,
+                  "content": base64.b64encode(json.dumps(obj).encode()).decode()}
+            if _sha:
+                _b["sha"] = _sha
+            _r = _ureq_g.Request("https://api.github.com/repos/%s/contents/%s" % (_ESTADO_REPO, fname),
+                                 data=json.dumps(_b).encode(), method="PUT", headers=_ESTADO_HDR)
+            _ureq_g.urlopen(_r, timeout=8).read()
+            return
+        except Exception:
+            continue
+
 def _look_load():
-    """Carrega looks equipados do disco (sobrevive a restart do worker)."""
+    """Carrega looks equipados do disco ou do repo (sobrevive a redeploy)."""
+    _n = 0
     try:
         with open(_LOOK_FILE) as _f:
             for _u, _ids in json.load(_f).items():
                 _LOOK[str(_u)] = list(_ids or [])
-        print("[LOOK] carregados %d uid(s) de %s" % (len(_LOOK), _LOOK_FILE), flush=True)
-    except Exception as _e:
-        print("[LOOK] nada carregado (%s)" % _e, flush=True)
+        _n = len(_LOOK)
+    except Exception:
+        pass
+    if not _n:
+        _d = _estado_get("look.json")
+        if _d:
+            for _u, _ids in _d.items():
+                _LOOK[str(_u)] = list(_ids or [])
+            _n = len(_LOOK)
+            print("[LOOK] restaurado do repo: %d uid(s)" % _n, flush=True)
+    print("[LOOK] carregados %d uid(s)" % _n, flush=True)
 
 def _look_save():
     try:
@@ -866,6 +919,7 @@ def _look_save():
             json.dump(_LOOK, _f)
     except Exception:
         pass
+    _th.Thread(target=_estado_put, args=("look.json", dict(_LOOK)), daemon=True).start()
 
 _look_load()
 
@@ -1224,6 +1278,7 @@ def _slots_save():
                 _jslots.dump({k: v.hex() for k, v in _SLOTS.items()}, _f)
     except Exception:
         pass
+    _ths.Thread(target=_estado_put, args=("slots.json", {k: v.hex() for k, v in _SLOTS.items()}), daemon=True).start()
 
 _slots_load()
 
