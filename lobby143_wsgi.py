@@ -1072,6 +1072,108 @@ def _splash_montroy():
 # look capturado no snapshot REAL (5 varints do ChangeClothes da sessao de 20/10)
 LOOK_CAPTURADO = bytes.fromhex("ccb6ce64efb7ce648195e660e796a361c59be061")
 
+# ===== CONTAS POR APARELHO: cada dispositivo tem o SEU uid e o SEU token =====
+# O MajorLogin leva o fingerprint do aparelho (campo 19 "Google|uuid" ou
+# campo 57 android_id). 1o aparelho a logar fica com o uid do Bryan
+# (10011227); os seguintes ganham uids novos. Persiste em contas.json
+# (branch estado) — sobrevive a redeploy.
+_CONTAS = {}
+_CONTAS_FILE = "contas.json"
+_CONTAS_LOCK = _th.Lock()
+_CONTAS_UID_INICIAL = 10011227
+_CONTAS_TOKEN_FIXO = "caac86365048653cd9ddec18b488effb8ecacde3a26a478c18787bcdda3abcc6f2ec113fbf217d52a05e8eff0ec8d7a2"
+
+def _contas_load():
+    _n = 0
+    try:
+        with open(_CONTAS_FILE) as _f:
+            _d = json.load(_f)
+        _n = len(_d)
+    except Exception:
+        _d = _estado_get("contas.json") or {}
+        _n = len(_d)
+    try:
+        for _fp, _c in _d.items():
+            _CONTAS[str(_fp)] = {"uid": int(_c["uid"]), "token": str(_c["token"])}
+            _TOK_UID[str(_c["token"])] = int(_c["uid"])
+        _n = len(_CONTAS)
+    except Exception:
+        pass
+    # o aparelho do Bryan ja e conhecido: uid dele fixado (ninguem pega)
+    _BRYAN_FP = "Google|fa2a5ed7-23fc-4401-aec5-0147c15c2cd8"
+    if _BRYAN_FP not in _CONTAS:
+        _c = {"uid": _CONTAS_UID_INICIAL, "token": _token_novo()}
+        _CONTAS[_BRYAN_FP] = _c
+        _TOK_UID[_c["token"]] = _c["uid"]
+        _contas_save()
+    print("[CONTAS] %d conta(s) carregada(s)" % len(_CONTAS), flush=True)
+
+def _contas_save():
+    try:
+        with open(_CONTAS_FILE, "w") as _f:
+            json.dump(_CONTAS, _f)
+    except Exception:
+        pass
+    _th.Thread(target=_estado_put, args=("contas.json", dict(_CONTAS)), daemon=True).start()
+
+def _uid_novo():
+    mx = _CONTAS_UID_INICIAL - 1
+    for _c in _CONTAS.values():
+        if _c["uid"] > mx:
+            mx = _c["uid"]
+    return mx + 1
+
+def _token_novo():
+    import uuid as _uu
+    return (_uu.uuid4().hex + _uu.uuid4().hex + _uu.uuid4().hex)[:96]
+
+def _conta(fp):
+    """Conta do aparelho: cria na 1a vez (uid+token proprios)."""
+    fp = str(fp)
+    with _CONTAS_LOCK:
+        c = _CONTAS.get(fp)
+        if c is None:
+            c = {"uid": _uid_novo(), "token": _token_novo()}
+            _CONTAS[fp] = c
+            _TOK_UID[c["token"]] = c["uid"]
+            _contas_save()
+            print("[CONTAS] NOVA conta fp=%s... uid=%d" % (fp[:24], c["uid"]), flush=True)
+        return c
+
+def _fp_majorlogin(pb):
+    """Fingerprint do aparelho no MajorLogin: campo 19 (Google|uuid) ou 57."""
+    try:
+        i = 0
+        f19 = f57 = None
+        while i < len(pb):
+            tag, i = _rv(pb, i)
+            fn, wt = tag >> 3, tag & 7
+            if wt == 0:
+                v, i = _rv(pb, i)
+            elif wt == 2:
+                l, i = _rv(pb, i)
+                v = pb[i:i+l]; i += l
+                if fn == 19 and not f19:
+                    f19 = v.decode(errors="replace")
+                elif fn == 57 and not f57:
+                    f57 = v.decode(errors="replace")
+            elif wt == 5:
+                i += 4
+            elif wt == 1:
+                i += 8
+            else:
+                break
+        if f19:
+            return f19
+        if f57:
+            return "aid:" + f57
+    except Exception:
+        pass
+    return ""
+
+_contas_load()
+
+
 _LOOK_PADRAO = [211000426, 211000300, 203000547, 204000111, 205000070]
 _UID_CTX = _th.local()
 _TOK_UID = {}   # token de sessao -> uid do jogador
@@ -1777,6 +1879,15 @@ def application(environ, start_response):
     body, ctype = resposta_controle(rota, environ)
     if body is None:
         body, ctype = resposta(rota)
+        if rota == "/MajorLogin" and body is not None:
+            # conta do aparelho: uid + token proprios (banco separado por jogador)
+            _fp = _fp_majorlogin(_pb)
+            _c = _conta(_fp) if _fp else None
+            if _c:
+                body = body.replace(b"\x08" + _wv(_CONTAS_UID_INICIAL), b"\x08" + _wv(_c["uid"]))
+                body = body.replace(_CONTAS_TOKEN_FIXO.encode(), _c["token"].encode())
+                _TOK_UID[_c["token"]] = _c["uid"]
+                print("[CONTAS] MajorLogin fp=%s... -> uid=%d" % (_fp[:24], _c["uid"]), flush=True)
         if rota == "/GetPlayerPersonalShow" and body is not None:
             body = _personal_show(body)
             _capture(rota, "", body[:400].hex(), "resp-show len=%d" % len(body))
