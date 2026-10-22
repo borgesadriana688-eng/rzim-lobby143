@@ -1284,6 +1284,7 @@ def _contas_load():
         for _fp, _c in _d.items():
             _CONTAS[str(_fp)] = {"uid": int(_c["uid"]), "token": str(_c["token"])}
             _TOK_UID[str(_c["token"])] = int(_c["uid"])
+            _TOK_UID[str(_c["token"])[-40:]] = int(_c["uid"])
         _n = len(_CONTAS)
     except Exception:
         pass
@@ -1361,6 +1362,7 @@ if _BRYAN_FP not in _CONTAS:
     with _CONTAS_LOCK:
         _CONTAS[_BRYAN_FP] = _c
         _TOK_UID[_c["token"]] = _c["uid"]
+        _TOK_UID[_c["token"][-40:]] = _c["uid"]
     _contas_save()
     print("[CONTAS] seed Bryan uid=%d" % _c["uid"], flush=True)
 
@@ -2105,6 +2107,7 @@ def application(environ, start_response):
                 body = body.replace(b"\x08" + _wv(_CONTAS_UID_INICIAL), b"\x08" + _wv(_c["uid"]))
                 body = body.replace(_CONTAS_TOKEN_FIXO.encode(), _c["token"].encode())
                 _TOK_UID[_c["token"]] = _c["uid"]
+                _TOK_UID[_c["token"][-40:]] = _c["uid"]
                 print("[CONTAS] MajorLogin fp=%s... -> uid=%d" % (_fp[:24], _c["uid"]), flush=True)
         if rota in ("/ChooseEmote", "/ChooseShow", "/ChooseBanner", "/ChooseHeadPic") and body is not None:
             _u = getattr(_UID_CTX, "uid", None)
