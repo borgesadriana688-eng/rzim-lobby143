@@ -1282,7 +1282,7 @@ def _contas_load():
             _d = json.load(_f)
         _n = len(_d)
     except Exception:
-        _d = _estado_get("contas_pv.json") or {}
+        _d = _estado_get("contas.json") or {}
         _n = len(_d)
     try:
         for _fp, _c in _d.items():
