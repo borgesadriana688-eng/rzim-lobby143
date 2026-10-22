@@ -1326,6 +1326,45 @@ def _conta(fp):
             print("[CONTAS] NOVA conta fp=%s... uid=%d" % (fp[:24], c["uid"]), flush=True)
         return c
 
+def _conta_uid(chave, uid):
+    """Conta com uid FIXO (login): cria na 1a vez com o uid da conta de login."""
+    chave = str(chave)
+    with _CONTAS_LOCK:
+        c = _CONTAS.get(chave)
+        if c is None:
+            c = {"uid": int(uid), "token": _token_novo()}
+            _CONTAS[chave] = c
+            _TOK_UID[c["token"]] = c["uid"]
+            _TOK_UID[c["token"][-40:]] = c["uid"]
+            _contas_save()
+            print("[CONTAS] nova conta de LOGIN uid=%d" % c["uid"], flush=True)
+        return c
+
+def _tok29(pb):
+    """MajorLogin campo 29 = access_token do login da tela (conta_pv)."""
+    try:
+        i = 0
+        while i < len(pb):
+            tag, i = _rv(pb, i)
+            fn_, wt = tag >> 3, tag & 7
+            if wt == 0:
+                v, i = _rv(pb, i)
+            elif wt == 2:
+                l, i = _rv(pb, i)
+                if fn_ == 29:
+                    return pb[i:i+l].decode(errors="replace")
+                i += l
+            elif wt == 5:
+                i += 4
+            elif wt == 1:
+                i += 8
+            else:
+                break
+    except Exception:
+        pass
+    return ""
+
+
 def _fp_majorlogin(pb):
     """Fingerprint do aparelho no MajorLogin: campo 19 (Google|uuid) ou 57."""
     try:
@@ -2171,7 +2210,34 @@ def application(environ, start_response):
         if rota == "/MajorLogin" and body is not None:
             # conta do aparelho: uid + token proprios (banco separado por jogador)
             _fp = _fp_majorlogin(_pb)
-            _c = _conta(_fp) if _fp else None
+            _c = None
+            _tok_lg = _tok29(_pb) if rota == "/MajorLogin" else ""
+            _uid_login = None
+            if _tok_lg.startswith("RZIM"):
+                try:
+                    import conta_pv as _cpv
+                    _uid_login = _cpv.token_valido(_tok29)
+                except Exception:
+                    _uid_login = None
+            if _uid_login:
+                # conta de LOGIN: uid do jogo = uid da conta criada na tela
+                _chave = "login:%d" % _uid_login
+                _ja = _chave in _CONTAS
+                _c = _conta_uid(_chave, _uid_login)
+                if not _ja and _fp and _fp in _CONTAS:
+                    # 1a vez com essa conta: herda skins/emotes do aparelho
+                    _velho = str(_CONTAS[_fp]["uid"])
+                    with _LOOK_LOCK:
+                        if _velho in _LOOK and str(_uid_login) not in _LOOK:
+                            _LOOK[str(_uid_login)] = _LOOK[_velho]; _look_save()
+                    with _SLOTS_LOCK:
+                        if _velho in _SLOTS and str(_uid_login) not in _SLOTS:
+                            _SLOTS[str(_uid_login)] = _SLOTS[_velho]; _slots_save()
+                    if _velho in _EQ and str(_uid_login) not in _EQ:
+                        _EQ[str(_uid_login)] = _EQ[_velho]; _eq_save()
+                    print("[CONTAS] heranca: uid %s -> conta %d" % (_velho, _uid_login), flush=True)
+            elif _fp:
+                _c = _conta(_fp)
             if _c:
                 body = body.replace(b"\x08" + _wv(_CONTAS_UID_INICIAL), b"\x08" + _wv(_c["uid"]))
                 body = body.replace(_CONTAS_TOKEN_FIXO.encode(), _c["token"].encode())
