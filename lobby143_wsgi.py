@@ -1467,6 +1467,9 @@ def _dec_req(body):
         return body
     try:
         p = _AES_C.new(_AES_KEY, _AES_C.MODE_CBC, _AES_IV).decrypt(body)
+        # strip PKCS7: bytes de pad eram lidos como campos e poluiam o parse
+        if p and 1 <= p[-1] <= 16 and p[-p[-1]:] == bytes([p[-1]]) * p[-1]:
+            p = p[:-p[-1]]
         if p and p[0] in (0x08, 0x0A, 0x10, 0x12, 0x18, 0x1A, 0x22, 0x2A):
             return p
     except Exception:
