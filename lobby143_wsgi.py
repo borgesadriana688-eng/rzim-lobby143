@@ -1572,6 +1572,41 @@ def _eq_aplica_backpack(b, uid):
         print("[EQ] backpack erro: %s" % ex, flush=True)
     return b
 
+def _contas_sync():
+    """Contas (SQLite volatil) -> branch estado, sobrevive a redeploy."""
+    try:
+        import conta_pv as _cpv
+        c = _cpv._db()
+        rows = c.execute("SELECT uid,usuario,salt,hash,criado FROM conta").fetchall()
+        c.close()
+        _o = {str(u): [us, s, h, cr] for u, us, s, h, cr in rows}
+        _th.Thread(target=_estado_put, args=("contas.json", _o), daemon=True).start()
+    except Exception as _e:
+        print("[conta] sync erro:", _e, flush=True)
+
+def _contas_restore():
+    try:
+        import conta_pv as _cpv
+        d = _estado_get("contas.json")
+        if not d:
+            return
+        c = _cpv._db()
+        n = 0
+        for _u, _v in d.items():
+            try:
+                c.execute("INSERT OR IGNORE INTO conta(uid,usuario,salt,hash,criado) VALUES(?,?,?,?,?)",
+                          (int(_u), _v[0], _v[1], _v[2], int(_v[3])))
+                n += 1
+            except Exception:
+                pass
+        c.commit(); c.close()
+        print("[conta] %d conta(s) restaurada(s) do repo" % n, flush=True)
+    except Exception as _e:
+        print("[conta] restore erro:", _e, flush=True)
+
+_contas_restore()
+
+
 def _troca_avatar_snapshot(b):
     """Troca o avatar_id do selected_items (campo 2 do CSGetBackpackRes)."""
     if AVATAR_PUBLIC_ID == 102000015 or not b:
@@ -2075,6 +2110,23 @@ def application(environ, start_response):
         _UID_CTX.uid = None
     if rota in ("/ChangeClothes", "/GetBackpack", "/GetPlayerPersonalShow", "/SelectProfile", "/UnlockProfile"):
         print("[BODY] %s len=%d hex=%s dec=%s" % (rota, len(_reqbody), _reqbody[:300].hex(), _pb[:300].hex()), flush=True)
+    # ===== CONTAS (entrar/criar conta): tela do conta_pv em vez de auto-login =====
+    if rota == "/access" or rota.startswith("/access/") or rota in ("/api/captcha", "/api/login", "/api/register") or _eh_fb_dialog(rota):
+        try:
+            import conta_pv as _cpv
+            _rrota = "/access" if rota.startswith("/access") else rota
+            _rr = _cpv.tratar(_rrota, environ.get("REQUEST_METHOD", "GET"), _reqbody)
+            if _rr is not None:
+                _cod, _rb, _rct = _rr
+                if rota in ("/api/login", "/api/register") and _cod == 200 and b'"success":true' in _rb:
+                    _contas_sync()
+                print("[conta] %s -> %d (%d B)" % (rota, _cod, len(_rb)), flush=True)
+                start_response("%d OK" % _cod if _cod == 200 else "%d Erro" % _cod,
+                               [("Content-Type", _rct), ("Content-Length", str(len(_rb))), ("Cache-Control", "no-store")])
+                return [_rb]
+        except Exception as _e:
+            print("[conta] ERRO %s: %s (fallback auto-login)" % (rota, _e), flush=True)
+
     if rota == "/ChangeClothes":
         pe = _parse_equip(_pb)
         if pe:
