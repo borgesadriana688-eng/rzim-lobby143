@@ -1072,6 +1072,10 @@ def _splash_montroy():
 # look capturado no snapshot REAL (5 varints do ChangeClothes da sessao de 20/10)
 LOOK_CAPTURADO = bytes.fromhex("ccb6ce64efb7ce648195e660e796a361c59be061")
 
+_LOOK_PADRAO = [211000426, 211000300, 203000547, 204000111, 205000070]
+_UID_CTX = _th.local()
+_TOK_UID = {}   # token de sessao -> uid do jogador
+
 # ===== CONTAS POR APARELHO: cada dispositivo tem o SEU uid e o SEU token =====
 # O MajorLogin leva o fingerprint do aparelho (campo 19 "Google|uuid" ou
 # campo 57 android_id). 1o aparelho a logar fica com o uid do Bryan
@@ -1099,13 +1103,6 @@ def _contas_load():
         _n = len(_CONTAS)
     except Exception:
         pass
-    # o aparelho do Bryan ja e conhecido: uid dele fixado (ninguem pega)
-    _BRYAN_FP = "Google|fa2a5ed7-23fc-4401-aec5-0147c15c2cd8"
-    if _BRYAN_FP not in _CONTAS:
-        _c = {"uid": _CONTAS_UID_INICIAL, "token": _token_novo()}
-        _CONTAS[_BRYAN_FP] = _c
-        _TOK_UID[_c["token"]] = _c["uid"]
-        _contas_save()
     print("[CONTAS] %d conta(s) carregada(s)" % len(_CONTAS), flush=True)
 
 def _contas_save():
@@ -1173,10 +1170,15 @@ def _fp_majorlogin(pb):
 
 _contas_load()
 
-
-_LOOK_PADRAO = [211000426, 211000300, 203000547, 204000111, 205000070]
-_UID_CTX = _th.local()
-_TOK_UID = {}   # token de sessao -> uid do jogador
+# o aparelho do Bryan ja e conhecido: uid dele fixado (ninguem pega)
+_BRYAN_FP = "Google|fa2a5ed7-23fc-4401-aec5-0147c15c2cd8"
+if _BRYAN_FP not in _CONTAS:
+    _c = {"uid": _CONTAS_UID_INICIAL, "token": _token_novo()}
+    with _CONTAS_LOCK:
+        _CONTAS[_BRYAN_FP] = _c
+        _TOK_UID[_c["token"]] = _c["uid"]
+    _contas_save()
+    print("[CONTAS] seed Bryan uid=%d" % _c["uid"], flush=True)
 
 def _look_atual(uid=None):
     """ids do look equipado por ESTE uid (ChangeClothes). Cada jogador tem o
