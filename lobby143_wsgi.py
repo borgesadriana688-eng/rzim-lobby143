@@ -1072,6 +1072,190 @@ def _splash_montroy():
 # look capturado no snapshot REAL (5 varints do ChangeClothes da sessao de 20/10)
 LOOK_CAPTURADO = bytes.fromhex("ccb6ce64efb7ce648195e660e796a361c59be061")
 
+# ===== EQUIPADOS POR JOGADOR (banner, headpic, emotes de entrada, show) =====
+# selected_items do GetBackpack: f3=look, f5=banner, f6=headpic, f7=slots,
+# f8=emotes de entrada [{f1=slot,f2=id}...], f9=show. Os Choose* respondem o
+# MESMO bloco de estado. Persistimos por uid (_EQ) e aplicamos em todos.
+_EQ = {}            # uid(str) -> {"banner":int,"headpic":int,"emotes":{slot:id},"show":hex}
+_EQ_LOCK = _th.Lock()
+
+def _eq_load():
+    _d = None
+    try:
+        with open("eq.json") as _f:
+            _d = json.load(_f)
+    except Exception:
+        _d = _estado_get("eq.json")
+    if _d:
+        for _u, _v in _d.items():
+            _EQ[str(_u)] = {"banner": _v.get("banner"), "headpic": _v.get("headpic"),
+                            "emotes": {int(k): int(x) for k, x in (_v.get("emotes") or {}).items()},
+                            "show": _v.get("show")}
+    print("[EQ] %d jogador(es) com equipamento salvo" % len(_EQ), flush=True)
+
+def _eq_save():
+    _o = {}
+    with _EQ_LOCK:
+        for _u, _v in _EQ.items():
+            _o[_u] = {"banner": _v.get("banner"), "headpic": _v.get("headpic"),
+                      "emotes": {str(k): x for k, x in _v["emotes"].items()}, "show": _v.get("show")}
+    try:
+        with open("eq.json", "w") as _f:
+            json.dump(_o, _f)
+    except Exception:
+        pass
+    _th.Thread(target=_estado_put, args=("eq.json", _o), daemon=True).start()
+
+def _eq_get(uid):
+    with _EQ_LOCK:
+        return _EQ.setdefault(str(uid), {"banner": None, "headpic": None, "emotes": {}, "show": None})
+
+def _eq_registra(rota, pb, uid):
+    """Grava no uid o que o jogo acabou de equipar. Retorna True se mudou algo."""
+    if not uid:
+        return False
+    try:
+        campos = []
+        i = 0
+        while i < len(pb):
+            tag, i = _rv(pb, i)
+            fn_, wt = tag >> 3, tag & 7
+            if wt == 0:
+                v, i = _rv(pb, i); campos.append((fn_, v))
+            elif wt == 2:
+                l, i = _rv(pb, i); campos.append((fn_, pb[i:i+l])); i += l
+            else:
+                break
+        c = dict(campos)
+        e = _eq_get(uid)
+        with _EQ_LOCK:
+            if rota == "/ChooseBanner" and isinstance(c.get(1), int):
+                e["banner"] = c[1]
+            elif rota == "/ChooseHeadPic" and isinstance(c.get(1), int):
+                e["headpic"] = c[1]
+            elif rota == "/ChooseEmote" and isinstance(c.get(1), int) and isinstance(c.get(2), int):
+                e["emotes"][c[1]] = c[2]
+            elif rota == "/ChooseShow" and isinstance(c.get(1), (bytes, bytearray)):
+                e["show"] = bytes(c[1]).hex()
+            else:
+                return False
+        _eq_save()
+        print("[EQ] uid=%s %s %s" % (uid, rota, {k: (v if isinstance(v, int) else v.hex()) for k, v in c.items()}), flush=True)
+        return True
+    except Exception as ex:
+        print("[EQ] erro registra: %s" % ex, flush=True)
+        return False
+
+def _eq_emotes_f8(e):
+    """f8 = emotes de entrada [{f1=slot,f2=id}...] a partir do _eq."""
+    out = b""
+    for s_ in sorted(e["emotes"]):
+        it = b"\x08" + _wv(s_) + b"\x10" + _wv(e["emotes"][s_])
+        out += b"\x0a" + _wv(len(it)) + it
+    return out
+
+def _eq_parse(b):
+    partes = []
+    i = 0
+    while i < len(b):
+        tag, i = _rv(b, i)
+        fn_, wt = tag >> 3, tag & 7
+        if wt == 0:
+            v, i = _rv(b, i); partes.append([fn_, 0, v])
+        elif wt == 2:
+            l, i = _rv(b, i); partes.append([fn_, 2, b[i:i+l]]); i += l
+        else:
+            return None
+    return partes
+
+def _eq_emotes_de(sel):
+    """dict slot->id lido do campo f8 atual."""
+    out = {}
+    for p in (sel or []):
+        if p[0] == 8 and p[1] == 2:
+            k = 0; b = p[2]
+            while k < len(b):
+                t2, k = _rv(b, k); l2, k = _rv(b, k)
+                sub = b[k:k+l2]; k += l2
+                q = 0; slot = idv = None
+                while q < len(sub):
+                    t3, q = _rv(sub, q); v3, q = _rv(sub, q)
+                    if t3 >> 3 == 1: slot = v3
+                    elif t3 >> 3 == 2: idv = v3
+                if slot is not None: out[slot] = idv
+    return out
+
+def _eq_aplica_bloco(b, uid, modo="selected", eco=None):
+    """Aplica o equipado do jogador num bloco protobuf.
+    modo selected (GetBackpack): f5 banner, f6 headpic, f7 slots, f8 emotes, f9 show
+    modo choose (Choose*):        f2 eco do item do pedido, f6 headpic, f7 slots, f8 emotes, f9 show
+    modo pesso (PersonalShow):    f10 show, f11 banner"""
+    if not uid or not b:
+        return b
+    e = _eq_get(uid)
+    with _SLOTS_LOCK:
+        slots = _SLOTS.get(str(uid))
+    tem_algo = e["banner"] or e["headpic"] or e["emotes"] or e["show"] or slots
+    if not tem_algo:
+        return b
+    partes = _eq_parse(b)
+    if partes is None:
+        return b
+    try:
+        # emotes de entrada: mescla o que ja vinha no bloco com o _eq
+        emotes = _eq_emotes_de(partes)
+        for s_, id_ in e["emotes"].items():
+            emotes[s_] = id_
+        f8n = b""
+        for s_ in sorted(emotes):
+            it = b"\x08" + _wv(s_) + b"\x10" + _wv(emotes[s_])
+            f8n += b"\x0a" + _wv(len(it)) + it
+        out = b""
+        vistos = set()
+        for fn_, wt, v in partes:
+            if modo == "selected":
+                if fn_ == 5 and wt == 0 and e["banner"]: v = e["banner"]
+                elif fn_ == 6 and wt == 0 and e["headpic"]: v = e["headpic"]
+                elif fn_ == 7 and wt == 2 and slots: v = slots
+                elif fn_ == 8 and wt == 2:
+                    if 8 in vistos: continue
+                    v = f8n
+                elif fn_ == 9 and wt == 2 and e["show"]: v = bytes.fromhex(e["show"])
+            elif modo == "choose":
+                if fn_ == 2 and wt == 0 and eco is not None: v = eco
+                elif fn_ == 6 and wt == 0 and e["headpic"]: v = e["headpic"]
+                elif fn_ == 7 and wt == 2 and slots: v = slots
+                elif fn_ == 8 and wt == 2:
+                    if 8 in vistos: continue
+                    v = f8n
+                elif fn_ == 9 and wt == 2 and e["show"]: v = bytes.fromhex(e["show"])
+            elif modo == "pesso":
+                if fn_ == 10 and wt == 2 and e["show"]: v = bytes.fromhex(e["show"])
+                elif fn_ == 11 and wt == 0 and e["banner"]: v = e["banner"]
+            vistos.add(fn_)
+            out += _wv((fn_ << 3) | wt) + (_wv(v) if wt == 0 else _wv(len(v)) + v)
+        return out
+    except Exception as ex:
+        print("[EQ] erro bloco (%s): %s" % (modo, ex), flush=True)
+        return b
+
+def _eq_aplica_resposta(b, uid, modo="choose", eco=None):
+    """Aplica num envelope 0a<len> + bloco."""
+    try:
+        if not b or b[0] != 0x0a:
+            return b
+        l, i = _rv(b, 1)
+        inner = b[i:i+l]
+        novo = _eq_aplica_bloco(inner, uid, modo, eco)
+        if novo == inner:
+            return b
+        return b"\x0a" + _wv(len(novo)) + novo + b[i+l:]
+    except Exception:
+        return b
+
+_eq_load()
+
+
 _LOOK_PADRAO = [211000426, 211000300, 203000547, 204000111, 205000070]
 _UID_CTX = _th.local()
 _TOK_UID = {}   # token de sessao -> uid do jogador
@@ -1345,6 +1529,38 @@ def _aplica_slots_backpack(b, uid):
             else: break
     except Exception as e:
         print("[SLOTS] backpack erro: %s" % e, flush=True)
+    return b
+
+def _eq_aplica_backpack(b, uid):
+    """GetBackpack: campo 2 = selected_items -> aplica banner/headpic/emotes/show."""
+    try:
+        if not uid or not b:
+            return b
+        e = _eq_get(uid)
+        if not (e["banner"] or e["headpic"] or e["emotes"] or e["show"]):
+            return b
+        i = 0
+        while i < len(b):
+            tag, j = _rv(b, i)
+            fn_, wt = tag >> 3, tag & 7
+            if wt == 2:
+                ln, k = _rv(b, j)
+                fim = k + ln
+                if fn_ == 2:
+                    sel = b[k:fim]
+                    novo = _eq_aplica_bloco(sel, uid, "selected")
+                    if novo != sel:
+                        print("[EQ] backpack uid=%s selected_items %dB -> %dB" % (uid, len(sel), len(novo)), flush=True)
+                        return b[:i] + _wv(tag) + _wv(len(novo)) + novo + b[fim:]
+                    return b
+                i = fim
+            elif wt == 0:
+                _, i = _rv(b, j)
+            elif wt == 5: i = j + 4
+            elif wt == 1: i = j + 8
+            else: break
+    except Exception as ex:
+        print("[EQ] backpack erro: %s" % ex, flush=True)
     return b
 
 def _troca_avatar_snapshot(b):
@@ -1890,12 +2106,31 @@ def application(environ, start_response):
                 body = body.replace(_CONTAS_TOKEN_FIXO.encode(), _c["token"].encode())
                 _TOK_UID[_c["token"]] = _c["uid"]
                 print("[CONTAS] MajorLogin fp=%s... -> uid=%d" % (_fp[:24], _c["uid"]), flush=True)
+        if rota in ("/ChooseEmote", "/ChooseShow", "/ChooseBanner", "/ChooseHeadPic") and body is not None:
+            _u = getattr(_UID_CTX, "uid", None)
+            if _u:
+                _eq_registra(rota, _pb, _u)
+                _eco = None
+                if rota in ("/ChooseBanner", "/ChooseHeadPic"):
+                    try:
+                        _i2 = 0
+                        _t2, _i2 = _rv(_pb, _i2)
+                        if (_t2 >> 3) == 1:
+                            _eco, _ = _rv(_pb, _i2)
+                    except Exception:
+                        _eco = None
+                body = _eq_aplica_resposta(body, _u, "choose", _eco)
+                body = _patch_look(body)
         if rota == "/GetPlayerPersonalShow" and body is not None:
+            _u = getattr(_UID_CTX, "uid", None)
             body = _personal_show(body)
+            if _u:
+                body = _eq_aplica_resposta(body, _u, "pesso")
             _capture(rota, "", body[:400].hex(), "resp-show len=%d" % len(body))
         if rota == "/GetBackpack" and body is not None:
             body = _troca_avatar_snapshot(body)
             body = _aplica_slots_backpack(body, getattr(_UID_CTX, "uid", None))
+            body = _eq_aplica_backpack(body, getattr(_UID_CTX, "uid", None))
             _capture(rota, "", body[:400].hex(), "resp-backpack len=%d" % len(body))
     if body is None and rota in ("/SelectProfile", "/UnlockProfile"):
         uid = _perfil_replay_uid(rota)
