@@ -2111,9 +2111,14 @@ def application(environ, start_response):
     if rota in ("/ChangeClothes", "/GetBackpack", "/GetPlayerPersonalShow", "/SelectProfile", "/UnlockProfile"):
         print("[BODY] %s len=%d hex=%s dec=%s" % (rota, len(_reqbody), _reqbody[:300].hex(), _pb[:300].hex()), flush=True)
     # ===== CONTAS (entrar/criar conta): tela do conta_pv em vez de auto-login =====
-    if rota == "/access" or rota.startswith("/access/") or rota in ("/api/captcha", "/api/login", "/api/register") or _eh_fb_dialog(rota):
+    try:
+        import conta_pv as _cpv
+        _eh_fbdlg = _cpv._eh_fb_dialog(rota)
+    except Exception:
+        _cpv = None
+        _eh_fbdlg = False
+    if _cpv is not None and (rota == "/access" or rota.startswith("/access/") or rota in ("/api/captcha", "/api/login", "/api/register") or _eh_fbdlg):
         try:
-            import conta_pv as _cpv
             _rrota = "/access" if rota.startswith("/access") else rota
             _rr = _cpv.tratar(_rrota, environ.get("REQUEST_METHOD", "GET"), _reqbody)
             if _rr is not None:
