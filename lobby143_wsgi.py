@@ -2216,7 +2216,7 @@ def application(environ, start_response):
             if _tok_lg.startswith("RZIM"):
                 try:
                     import conta_pv as _cpv
-                    _uid_login = _cpv.token_valido(_tok29)
+                    _uid_login = _cpv.token_valido(_tok_lg)
                 except Exception:
                     _uid_login = None
             if _uid_login:
