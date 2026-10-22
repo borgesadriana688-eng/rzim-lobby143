@@ -1195,7 +1195,9 @@ def _eq_aplica_bloco(b, uid, modo="selected", eco=None):
     e = _eq_get(uid)
     with _SLOTS_LOCK:
         slots = _SLOTS.get(str(uid))
-    tem_algo = e["banner"] or e["headpic"] or e["emotes"] or e["show"] or slots
+    with _LOOK_LOCK:
+        look = _LOOK.get(str(uid))
+    tem_algo = e["banner"] or e["headpic"] or e["emotes"] or e["show"] or slots or look
     if not tem_algo:
         return b
     partes = _eq_parse(b)
@@ -1214,7 +1216,9 @@ def _eq_aplica_bloco(b, uid, modo="selected", eco=None):
         vistos = set()
         for fn_, wt, v in partes:
             if modo == "selected":
-                if fn_ == 5 and wt == 0 and e["banner"]: v = e["banner"]
+                if fn_ == 3 and wt == 2 and look:
+                    v = b"".join(_wv(x) for x in look)
+                elif fn_ == 5 and wt == 0 and e["banner"]: v = e["banner"]
                 elif fn_ == 6 and wt == 0 and e["headpic"]: v = e["headpic"]
                 elif fn_ == 7 and wt == 2 and slots: v = slots
                 elif fn_ == 8 and wt == 2:
@@ -2075,9 +2079,14 @@ def application(environ, start_response):
         pe = _parse_equip(_pb)
         if pe:
             uid, ids, slot = pe
+            # FIX PERFIL: o cliente usa o avatar do backpack (102000004) como uid
+            # do pedido. Grava sob o uid da CONTA (token) — senão o equip caía em
+            # outra conta e o perfil nunca via a skin nova.
+            _uid_conta = getattr(_UID_CTX, "uid", None) or uid
             with _LOOK_LOCK:
-                _LOOK[str(uid)] = ids
+                _LOOK[str(_uid_conta)] = ids
                 _look_save()
+            print("[EQUIP] uid=%s (conta %s) ids=%s slot=%s" % (uid, _uid_conta, ids, slot), flush=True)
             b = _build_equip_resp(uid, ids, slot)
             print("[EQUIP] uid=%s ids=%s slot=%s" % (uid, ids, slot), flush=True)
             _capture(rota, "uid=%s ids=%s slot=%s" % (uid, ids, slot), b.hex(), "resp-equip")
