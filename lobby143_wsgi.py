@@ -2277,7 +2277,11 @@ def application(environ, start_response):
             start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", str(len(b)))])
             return [b]
     if body is None:
-        if rota == "/app/info/get":
+        if rota == "/Logout":
+        # ACK do logout (antes caia no GENERIC, que e lixo, e o jogo dava "Falha ao Sair")
+        start_response("200 OK", [("Content-Type", "application/octet-stream"), ("Content-Length", "2")])
+        return [b"\x08\x00"]
+    if rota == "/app/info/get":
             body = json.dumps({"client_log": False, "status": 0, "maintenance": False, "version": "1.70.0",
                 "game_server": GAME_PUBLIC_ADDR, "update_url": "",
                 "notice": {"title": "Rzim Server", "content": "Lobby 1.43", "show": True}}, separators=(",", ":")).encode()
