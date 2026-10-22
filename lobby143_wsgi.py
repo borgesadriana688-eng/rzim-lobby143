@@ -1282,7 +1282,7 @@ def _contas_load():
             _d = json.load(_f)
         _n = len(_d)
     except Exception:
-        _d = _estado_get("contas.json") or {}
+        _d = _estado_get("contas_pv.json") or {}
         _n = len(_d)
     try:
         for _fp, _c in _d.items():
@@ -1619,14 +1619,14 @@ def _contas_sync():
         rows = c.execute("SELECT uid,usuario,salt,hash,criado FROM conta").fetchall()
         c.close()
         _o = {str(u): [us, s, h, cr] for u, us, s, h, cr in rows}
-        _th.Thread(target=_estado_put, args=("contas.json", _o), daemon=True).start()
+        _th.Thread(target=_estado_put, args=("contas_pv.json", _o), daemon=True).start()
     except Exception as _e:
         print("[conta] sync erro:", _e, flush=True)
 
 def _contas_restore():
     try:
         import conta_pv as _cpv
-        d = _estado_get("contas.json")
+        d = _estado_get("contas_pv.json")
         if not d:
             return
         c = _cpv._db()
