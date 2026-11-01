@@ -276,6 +276,15 @@ def login_170():
     body += vint(0x48, 28800) + s(0x52, host) + vint(0x60, 0)
     return body, 200, {"Content-Type": "application/octet-stream"}
 
+
+# --- SITE DE ESTUDO (MONTROY) ---
+@app.route('/estudo', methods=['GET'])
+@app.route('/estudo/', methods=['GET'])
+def estudo_site():
+    p = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'estudo.html')
+    with open(p, 'rb') as f:
+        return f.read(), 200, {"Content-Type": "text/html; charset=utf-8"}
+
 @app.route('/oauth/guest/register', methods=['POST'])
 def guest_register():
     app_id = request.form.get('app_id', '')
