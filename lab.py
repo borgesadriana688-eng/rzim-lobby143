@@ -216,7 +216,7 @@ MISSOES = [
         "dicas": [
             "O servidor monta algo como: ping -c1 <host>.",
             "Em shell, <code>;</code> separa comandos. Tudo depois tambem seria executado.",
-            "Peca <code>/diagnostico?host=127.0.0.1;cat /flag</code>. A resposta simulada mostra a flag.",
+            "Peca <code>/diagnostico?host=127.0.0.1;id</code> (ou com <code>|</code> ou <code>&amp;&amp;</code>). A resposta simulada mostra a flag.",
             "E command injection. Correcao: nunca montar linha de shell com entrada do usuario; use lista de argumentos e valide o host (regex de IP/hostname).",
         ],
         "fix": "subprocess.run(['ping','-c','1',host], shell=False)  # + validar host",
