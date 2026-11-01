@@ -122,6 +122,25 @@ table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{border-bottom:1px solid #24242c;padding:7px 6px;text-align:left}
 th{color:#9a9aa8;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
 footer{margin-top:30px;border-top:1px solid #24242c;padding-top:14px;font-size:12px;color:#7a7a88}
+
+.topo{text-align:center;margin:6px 0 14px}
+.marca{font-weight:900;letter-spacing:2px;font-size:20px;color:#ff6b4a}
+.marca span{color:#e8e8ec}
+.sub{font-size:12px;color:#8b8b99;letter-spacing:1px;text-transform:uppercase}
+.aviso{background:#141821;border:1px solid #2a3242;border-radius:12px;padding:12px 14px;font-size:14px;color:#c9c9d4;margin:10px 0}
+.placar{position:sticky;top:0;z-index:5;background:#0d0d10;border-bottom:1px solid #24242c;padding:10px 0;text-align:center;font-weight:700;color:#5fd08a;font-size:14px}
+.cartao{background:#121218;border:1px solid #24242c;border-radius:14px;padding:14px 16px;margin:14px 0}
+.titulo{font-weight:800;font-size:17px;margin-bottom:6px}
+.ideia{color:#b9b9c6;font-size:14px;margin:6px 0 12px}
+.passo{border-top:1px dashed #26262f;padding-top:10px;margin-top:10px}
+.ptxt{font-size:14px;margin-bottom:8px}
+.btn{width:100%;margin-bottom:8px}
+.out{display:none;white-space:pre-wrap;background:#0b0b10;border:1px solid #26262f;border-radius:10px;padding:10px;font-size:12.5px;color:#d5d5e0;margin:0}
+.out.bom{border-color:#2f6b45;background:#0e1712;color:#bdf0cf}
+.ok{background:#0f1a14;border:1px solid #2f6b45;color:#bdf0cf;border-radius:10px;padding:10px 12px;font-size:14px;margin-top:10px}
+.dic{font-size:14px;padding-left:18px}
+.dic li{margin:6px 0}
+.rodape{text-align:center;margin:28px 0 10px;font-size:13px}
 """
 
 MISSOES = [
@@ -346,9 +365,302 @@ placar(); dicasHTML();
        __import__("json").dumps(MISSOES, ensure_ascii=False).replace("</", "<\\/")))
 
 
+# ==========================================================
+# MODO GUIADO (iniciante): cada missao vira passo a passo
+# ==========================================================
+
+GUIADAS = [
+    {
+        "id": 1, "nome": "Entrar sem a senha",
+        "ideia": "O site monta a pergunta do banco colando o que voce digita. Se voce digitar um pedaco da pergunta, ela muda de sentido.",
+        "passos": [
+            ("Tentar entrar com senha errada (o normal).", "login_errado"),
+            ("Agora digitar um pedaco de comando no e-mail.", "login_sqli"),
+        ],
+        "explica": "Isso e injecao de SQL. O texto digitado virou parte do comando do banco, e a condicao virou sempre verdadeira. Correcao: consulta parametrizada, onde o dado nunca vira comando.",
+    },
+    {
+        "id": 2, "nome": "Ver a conta de outra pessoa",
+        "ideia": "A pagina da conta recebe o numero pelo endereco (?id=2). Se o servidor nao confere de quem e aquela conta, voce troca o numero.",
+        "passos": [
+            ("Abrir a SUA conta (id=2).", "conta_propria"),
+            ("Trocar o numero para a conta do admin (id=1).", "conta_vizinho"),
+        ],
+        "explica": "Isso e IDOR: trocar o identificador na URL e ver dado de outro. O servidor precisa comparar o id pedido com o usuario logado.",
+    },
+    {
+        "id": 3, "nome": "Virar administrador",
+        "ideia": "O site guarda seu papel (usuario ou admin) num cookie, e base64 nao e protecao: qualquer um le e reescreve.",
+        "passos": [
+            ("Tentar abrir a area admin sem permissao.", "admin_sem"),
+            ("Editar o cookie e mandar de novo.", "admin_com"),
+        ],
+        "explica": "Controle de acesso feito no cliente nao existe. O papel deve ser decidido no servidor, com sessao assinada.",
+    },
+    {
+        "id": 4, "nome": "Ler arquivo fora da pasta",
+        "ideia": "O leitor de arquivos junta a pasta base com o nome que voce manda. Se o nome tiver ../ ele sobe uma pasta.",
+        "passos": [
+            ("Ler um arquivo publico normal.", "arq_publico"),
+            ("Subir de pasta com ../ e ler o segredo.", "arq_traversal"),
+        ],
+        "explica": "Isso e path traversal. Correcao: normalizar o caminho e conferir se ele continua dentro da pasta permitida.",
+    },
+    {
+        "id": 5, "nome": "Fazer a busca executar codigo",
+        "ideia": "A pagina devolve o que voce digitou sem tratar. Se todos tratassem o texto como texto, isso nao aconteceria.",
+        "passos": [
+            ("Buscar uma palavra normal.", "busca_normal"),
+            ("Buscar com um pedaco de HTML/script.", "busca_xss"),
+        ],
+        "explica": "XSS refletido: o navegador de quem abrir o link roda o que voce escreveu. Correcao: escapar a saida.",
+    },
+    {
+        "id": 6, "nome": "Achar a chave escondida",
+        "ideia": "Tudo que vai para o navegador pode ser lido. Chave de API no arquivo do site e chave entregue.",
+        "passos": [
+            ("Abrir o arquivo de script do site.", "ver_js"),
+            ("Usar a chave achada nele.", "usar_chave"),
+        ],
+        "explica": "Segredo no cliente nao e segredo. Chave de servidor fica no servidor, com permissao minima e rotacao.",
+    },
+    {
+        "id": 7, "nome": "Descobrir o PIN",
+        "ideia": "Sao 10 mil combinacoes. Se o site aceita tentar sem limite e sem esperar, o computador acha rapido.",
+        "passos": [
+            ("Tentar um PIN qualquer.", "pin_errado"),
+            ("Tentar todos ate achar (o servidor faz o laco).", "pin_bruto"),
+        ],
+        "explica": "Forca bruta por falta de rate limit. Correcao: limite por IP e por conta, atraso progressivo, bloqueio e MFA.",
+    },
+    {
+        "id": 8, "nome": "Mandar comando pelo diagnostico",
+        "ideia": "O site monta um comando de terminal com o texto que voce manda. ; e | encadeiam outro comando.",
+        "passos": [
+            ("Rodar o diagnostico normal.", "diag_normal"),
+            ("Encadear outro comando com ;id.", "diag_injecao"),
+        ],
+        "explica": "Injecao de comando. Aqui o terminal e simulado, nada roda de verdade. Correcao: nunca montar comando com texto do usuario, usar lista de argumentos fixa.",
+    },
+]
+
+
+def _resp_txt(metodo, caminho, status, corpo):
+    return "%s %s\n%d %s\n%s" % (metodo, caminho, status, "OK" if status == 200 else ("FORBIDDEN" if status == 403 else "ERRO"), corpo)
+
+
+def _user(uid):
+    for u in USUARIOS:
+        if u["id"] == uid:
+            return u
+    return None
+
+
+def executar_passo(m, p):
+    """Executa a acao do passo e devolve dict com saida, sucesso e flag."""
+    par = GUIADAS[m - 1]["passos"][p - 1][1]
+
+    if par == "login_errado":
+        q = "SELECT id, nome, papel FROM usuarios WHERE email = 'brayan@aurora.local' AND senha = 'chute'"
+        linhas, _err = run_sql(q)
+        return {"saida": _resp_txt("POST", "/entrar", 200, "Acesso negado. E-mail ou senha invalidos." if not linhas else "entrou"),
+                "ok": False, "consulta": q}
+
+    if par == "login_sqli":
+        em = "' OR '1'='1' --"
+        q = "SELECT id, nome, papel FROM usuarios WHERE email = '%s' AND senha = 'chute'" % em
+        linhas, _err = run_sql(q)
+        if linhas:
+            return {"saida": _resp_txt("POST", "/entrar", 200,
+                    "Entrou como: %s (papel: %s)\nflag: %s" % (linhas[0].get("nome"), linhas[0].get("papel"), FLAGS["sql"])),
+                    "ok": True, "consulta": q}
+        return {"saida": "nao entrou", "ok": False, "consulta": q}
+
+    if par == "conta_propria":
+        u = _user(2)
+        return {"saida": _resp_txt("GET", "/conta?id=2", 200, "%s | %s\nnota: %s" % (u["nome"], u["email"], u["segredo"])), "ok": False}
+
+    if par == "conta_vizinho":
+        u = _user(1)
+        return {"saida": _resp_txt("GET", "/conta?id=1", 200,
+                "%s | %s\nnota privada: %s\nflag: %s" % (u["nome"], u["email"], u["segredo"], FLAGS["idor"])),
+                "ok": True}
+
+    if par == "admin_sem":
+        return {"saida": _resp_txt("GET", "/admin", 403, "Acesso negado: papel atual = usuario"), "ok": False}
+
+    if par == "admin_com":
+        ck = base64.b64encode(b"papel=admin&id=1").decode()
+        return {"saida": _resp_txt("GET", "/admin", 200,
+                "cookie enviado: acesso=%s\nBem-vindo, admin. Chave do cofre: %s" % (ck, FLAGS["admin"])), "ok": True}
+
+    if par == "arq_publico":
+        return {"saida": _resp_txt("GET", "/arquivos?nome=publico/aviso.txt", 200, ARQUIVOS["publico/aviso.txt"]), "ok": False}
+
+    if par == "arq_traversal":
+        return {"saida": _resp_txt("GET", "/arquivos?nome=../privado/segredo.txt", 200,
+                "/var/aurora/publico/../privado/segredo.txt\n" + ARQUIVOS["privado/segredo.txt"] + "\nflag: " + FLAGS["traversal"]), "ok": True}
+
+    if par == "busca_normal":
+        return {"saida": _resp_txt("GET", "/busca?q=empréstimo", 200, "resultados para: emprestimo (2 itens)"), "ok": False}
+
+    if par == "busca_xss":
+        return {"saida": _resp_txt("GET", "/busca?q=<script>alert(1)</script>", 200,
+                "resultados para: <script>alert(1)</script>\n(o navegador de quem abre o link executa isso)\nflag: " + FLAGS["xss"]), "ok": True}
+
+    if par == "ver_js":
+        trecho = '// app.js do Banco Aurora\nvar API_KEY = "%s";\nfunction saldo(){ fetch("/api/saldo?key=" + API_KEY) }' % API_KEY
+        return {"saida": _resp_txt("GET", "/static/app.js", 200, trecho), "ok": False}
+
+    if par == "usar_chave":
+        return {"saida": _resp_txt("GET", "/api/saldo?key=" + API_KEY, 200,
+                '{"conta":"aurora-master","saldo":987654321.0}\nflag: ' + FLAGS["chave"]), "ok": True}
+
+    if par == "pin_errado":
+        return {"saida": _resp_txt("GET", "/api/pin?p=0000", 200, '{"ok":false,"msg":"pin errado"}'), "ok": False}
+
+    if par == "pin_bruto":
+        achou = None
+        for i in range(10000):
+            cand = "%04d" % i
+            if cand == PIN:
+                achou = (i + 1, cand)
+                break
+        return {"saida": _resp_txt("GET", "/api/pin?p=" + (achou[1] if achou else "----"), 200,
+                '{"ok":true,"flag":"%s"}' % FLAGS["pin"]) + "\n(tentei %d vezes, sem bloqueio nenhum)" % achou[0], "ok": True}
+
+    if par == "diag_normal":
+        return {"saida": _resp_txt("GET", "/diagnostico?host=127.0.0.1", 200, "ping 127.0.0.1 -> 3 pacotes, 0 perda"), "ok": False}
+
+    if par == "diag_injecao":
+        return {"saida": _resp_txt("GET", "/diagnostico?host=127.0.0.1;id", 200,
+                "ping 127.0.0.1 -> ok\nuid=0(root) gid=0(root)\nflag: " + FLAGS["cmd"] + "\n(terminal simulado: nada rodou de verdade)"), "ok": True}
+
+    return {"saida": "passo desconhecido", "ok": False}
+
+
+@app.route("/guia/executar")
+def guia_executar():
+    try:
+        m = int(request.args.get("m", "1"))
+        p = int(request.args.get("p", "1"))
+    except ValueError:
+        return {"erro": "parametros"}, 400
+    if not (1 <= m <= len(GUIADAS)) or not (1 <= p <= len(GUIADAS[m - 1]["passos"])):
+        return {"erro": "missao invalida"}, 404
+    r = executar_passo(m, p)
+    g = GUIADAS[m - 1]
+    r["totalPassos"] = len(g["passos"])
+    if r.get("ok"):
+        r["explica"] = g["explica"]
+    return r
+
+
+def guia_html():
+    cards = []
+    for g in GUIADAS:
+        passos = []
+        for i, (txt, acao) in enumerate(g["passos"], 1):
+            passos.append(
+                '<div class="passo"><div class="ptxt">%d. %s</div>'
+                '<button class="btn" onclick="rodar(%d,%d,this)">▶ Fazer esse passo</button>'
+                '<pre class="out" id="o%d_%d"></pre></div>' % (i, txt, g["id"], i, g["id"], i)
+            )
+        cards.append(
+            '<div class="cartao" id="m%d">'
+            '<div class="titulo">Missao %d · %s</div>'
+            '<p class="ideia">%s</p>'
+            '%s'
+            '<div class="fim" id="f%d"></div>'
+            '</div>' % (g["id"], g["id"], g["nome"], g["ideia"], "".join(passos), g["id"])
+        )
+
+    corpo = """
+<div class="topo">
+  <div class="marca">MONTROY <span>LAB</span></div>
+  <div class="sub">modo guiado · clique e veja acontecer</div>
+</div>
+
+<div class="aviso">
+<strong>Como usar:</strong> leia a ideia da missao e va clicando nos botoes, do primeiro para o ultimo.
+Cada botao faz uma coisa no sistema e mostra a resposta dele. Quando a resposta trouxer uma flag,
+voce resolveu. Depois leia "por que funcionou".
+</div>
+
+<div id="placar" class="placar">0 de 8 resolvidas</div>
+
+%s
+
+<div class="cartao">
+  <div class="titulo">Dicionario rapido</div>
+  <p class="ideia">Se travar em alguma palavra, e aqui:</p>
+  <ul class="dic">
+    <li><strong>Requisicao</strong>: o pedido que o app manda pro servidor (GET le, POST envia).</li>
+    <li><strong>URL</strong>: o endereco do pedido; o que vem depois de ? sao os dados (ex: ?id=2).</li>
+    <li><strong>Cookie</strong>: bilhete que o site guarda no seu navegador e voce pode editar.</li>
+    <li><strong>Banco de dados</strong>: tabelas com linhas; o site pergunta em SQL.</li>
+    <li><strong>SQL</strong>: a lingua das perguntas ao banco (SELECT ... WHERE ...).</li>
+    <li><strong>Flag</strong>: prova de que voce chegou la, tipo MONTROY{...}.</li>
+  </ul>
+</div>
+
+<div class="rodape">
+  <a href="/livre">modo livre (sem passos, para quem ja sabe)</a>
+</div>
+
+<script>
+var chave = 'montroy_guia';
+var feitas = JSON.parse(localStorage.getItem(chave) || '[]');
+
+function placar(){
+  document.getElementById('placar').textContent = feitas.length + ' de 8 resolvidas';
+}
+
+function marcar(m){
+  if (feitas.indexOf(m) < 0){ feitas.push(m); localStorage.setItem(chave, JSON.stringify(feitas)); placar(); }
+}
+
+function rodar(m, p, btn){
+  var out = document.getElementById('o' + m + '_' + p);
+  out.style.display = 'block';
+  out.textContent = 'executando...';
+  btn.disabled = true;
+  fetch('/guia/executar?m=' + m + '&p=' + p).then(function(r){ return r.json(); }).then(function(d){
+    out.textContent = d.saida || d.erro || 'sem resposta';
+    out.className = 'out' + (d.ok ? ' bom' : '');
+    btn.disabled = false;
+    if (d.ok){
+      marcar(m);
+      var f = document.getElementById('f' + m);
+      f.innerHTML = '<div class="ok">Resolveu essa. ' + (d.explica || '') + '</div>';
+    }
+  }).catch(function(e){
+    out.textContent = 'erro: ' + e;
+    btn.disabled = false;
+  });
+}
+
+placar();
+</script>
+""" % ("".join(cards))
+
+    return shell("modo guiado", corpo)
+
+
 @app.route("/")
 def index():
+    return pagina(guia_html())
+
+
+@app.route("/guia")
+def guia():
+    return pagina(guia_html())
+
+
+@app.route("/livre")
+def livre():
     return pagina(home_html())
+
 
 
 @app.route("/validar")
