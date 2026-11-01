@@ -343,7 +343,7 @@ function validar(){
 placar(); dicasHTML();
 </script>
 """ % ("".join(cards),
-       __import__("json").dumps(MISSOES, ensure_ascii=False)))
+       __import__("json").dumps(MISSOES, ensure_ascii=False).replace("</", "<\\/")))
 
 
 @app.route("/")
