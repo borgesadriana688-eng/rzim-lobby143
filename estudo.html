@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MONTROY · Laboratório de Estudo</title>
+<style>
+:root{
+  --bg:#0a0a0c; --card:#131318; --card2:#191920; --line:#242430;
+  --txt:#ececf1; --dim:#9a9aa8; --accent:#ff4d3d; --accent2:#ffb020;
+  --ok:#2fbf71; --err:#ff5c5c; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#2a0a0e 0%,var(--bg) 45%,#060607 100%);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.55;padding-bottom:70px}
+.wrap{max-width:860px;margin:0 auto;padding:16px}
+header.top{display:flex;align-items:center;gap:10px;padding:14px 0 6px}
+.brand{font-weight:900;letter-spacing:3px;font-size:20px;background:linear-gradient(90deg,#ff4d3d,#ffb020);-webkit-background-clip:text;background-clip:text;color:transparent}
+.tag{font-size:11px;color:var(--dim);border:1px solid var(--line);padding:3px 8px;border-radius:999px}
+.xp{margin-left:auto;font-size:12px;color:var(--dim)}
+.xp b{color:var(--accent2)}
+h1{font-size:22px;margin:10px 0 4px}
+h2{font-size:17px;margin:26px 0 8px;display:flex;align-items:center;gap:8px}
+h2 .n{width:24px;height:24px;border-radius:7px;background:var(--accent);color:#fff;font-size:12px;display:grid;place-items:center;font-weight:800;flex:none}
+h3{font-size:14px;margin:16px 0 6px;color:var(--accent2)}
+p,li{color:#d6d6de;font-size:14.5px}
+.muted{color:var(--dim);font-size:13px}
+nav.tabs{position:sticky;top:0;z-index:20;display:flex;gap:6px;overflow-x:auto;padding:10px 0;background:linear-gradient(#0a0a0cee,#0a0a0ccc);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav.tabs button{flex:none;background:var(--card);border:1px solid var(--line);color:var(--dim);padding:8px 12px;border-radius:10px;font-size:13px;font-weight:600}
+nav.tabs button.on{background:linear-gradient(90deg,#ff4d3d,#ff8a3d);color:#fff;border-color:transparent}
+section.pane{display:none;animation:fade .25s ease}
+section.pane.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
+pre{background:#0c0c10;border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto;font-family:var(--mono);font-size:12.5px;line-height:1.5;margin:8px 0}
+code{font-family:var(--mono);font-size:12.5px;background:#1d1d26;padding:1px 5px;border-radius:5px}
+pre code{background:none;padding:0}
+.k{color:#ff7b72}.s{color:#a5d6ff}.c{color:#6a737d}.f{color:#d2a8ff}.n{color:#79c0ff}
+textarea,input,select{width:100%;background:#0c0c10;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:10px;font-family:var(--mono);font-size:12.5px;resize:vertical}
+input,select{font-family:inherit;font-size:14px}
+button.btn{background:linear-gradient(90deg,#ff4d3d,#ff8a3d);border:0;color:#fff;font-weight:700;padding:11px 16px;border-radius:10px;font-size:14px}
+button.ghost{background:var(--card2);border:1px solid var(--line);color:var(--txt);font-weight:600;padding:10px 14px;border-radius:10px;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.out{background:#08080b;border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:8px;font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;min-height:20px;color:#c9ffd9}
+.out.err{color:#ffb3b3}
+.pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+.pill.ok{color:var(--ok);border-color:#1f5c3d;background:#0d1f16}
+.pill.no{color:var(--err);border-color:#5c1f1f;background:#1f0d0d}
+.opt{display:block;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:11px;margin:7px 0;cursor:pointer;font-size:14px}
+.opt:hover{border-color:#3a3a4a}
+.opt.right{border-color:var(--ok);background:#0d1f16}
+.opt.wrong{border-color:var(--err);background:#1f0d0d}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;font-family:var(--mono);font-size:12.5px}
+th{background:#16161d;color:var(--dim);font-weight:600}
+.badge{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--accent2);border:1px solid #4a3410;background:#1a1206;padding:2px 7px;border-radius:6px}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:4px 10px;font-size:13px;font-family:var(--mono)}
+.kv div:nth-child(odd){color:var(--dim)}
+.flag{font-family:var(--mono);color:#7ef7a4;background:#08140d;border:1px dashed #2fbf71;padding:8px 10px;border-radius:8px;margin-top:8px;font-size:13px;word-break:break-all}
+.two{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:720px){.two{grid-template-columns:1fr 1fr}}
+footer{position:fixed;bottom:0;left:0;right:0;background:#08080be8;backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:8px 14px;font-size:11px;color:var(--dim);display:flex;gap:10px;align-items:center;z-index:30}
+footer .bar{flex:1;height:6px;background:#1a1a22;border-radius:99px;overflow:hidden}
+footer .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff4d3d,#ffb020);transition:width .3s}
+.hint{font-size:12.5px;color:var(--accent2);margin-top:6px}
+details{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:8px}
+summary{cursor:pointer;font-weight:600;font-size:13.5px}
+.chip{display:inline-block;background:#1d1d26;border:1px solid var(--line);border-radius:8px;padding:4px 8px;margin:3px 4px 0 0;font-family:var(--mono);font-size:11.5px;color:#c9c9d6;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div class="brand">MONTROY</div>
+  <div class="tag">Laboratório de Estudo</div>
+  <div class="xp">XP <b id="xp">0</b></div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="on" data-pane="p1">1 · Lógica</button>
+  <button data-pane="p2">2 · Python / JS</button>
+  <button data-pane="p3">3 · HTTP &amp; Banco</button>
+  <button data-pane="p4">4 · Desafios</button>
+  <button data-pane="p5">5 · A escolha</button>
+</nav>
+
+<!-- ================= 1 LOGICA ================= -->
+<section class="pane on" id="p1">
+  <h1>A mesma habilidade, duas saídas</h1>
+  <p class="muted">Quem sabe ler código, achar falha e explorar sistema é a mesma pessoa nos dois lados. O que muda é a escolha depois da falha encontrada. Este laboratório treina a habilidade e a escolha.</p>
+
+  <div class="card">
+    <span class="badge">lição 1</span>
+    <h2><span class="n">1</span>Lógica é a base de tudo</h2>
+    <p>Toda falha de segurança nasce de uma suposição errada na lógica. Antes de pensar em invasão, pense em: <b>o que este código assume que sempre é verdade?</b></p>
+    <h3>Três blocos que resolvem 90% dos problemas</h3>
+    <ul>
+      <li><b>Condição:</b> se (isto) então (aquilo). Erro comum: usar <code>==</code> onde precisava de atenção ao tipo, ou esquecer um caso.</li>
+      <li><b>Repetição:</b> enquanto (isto) faça. Erro comum: nunca sair do laço, ou sair cedo demais.</li>
+      <li><b>Acumulador:</b> pegar um resultado e ir somando/filtrando. Erro comum: começar do valor errado.</li>
+    </ul>
+    <pre><code><span class="c"># conta quantos usuários são admin</span>
+admins = 0
+<span class="k">for</span> u <span class="k">in</span> usuarios:
+    <span class="k">if</span> u.nivel == <span class="s">"admin"</span>:
+        admins += 1</code></pre>
+    <p class="muted">A falha clássica aqui é confiar em <code>u.nivel</code> vindo do cliente. Se o cliente manda o nível, o atacante manda "admin".</p>
+  </div>
+
+  <div class="card">
+    <span class="badge">treino</span>
+    <h2><span class="n">2</span>Teste de lógica</h2>
+    <div id="quiz1"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">3</span>Operadores que decidem tudo</h2>
+    <table>
+      <tr><th>Operador</th><th>Lê-se</th><th>Onde aparece na falha</th></tr>
+      <tr><td><code>&amp;&amp;</code></td><td>E</td><td>Checagem dupla: precisa das duas condições</td></tr>
+      <tr><td><code>||</code></td><td>OU</td><td>Erro clássico: usar OU achando que protege</td></tr>
+      <tr><td><code>!</code></td><td>NÃO</td><td>Inverte a decisão, gera negação esquecida</td></tr>
+      <tr><td><code>=</code> vs <code>==</code></td><td>atribuir vs comparar</td><td>Atribuição acidental dentro de condição</td></tr>
+    </table>
+    <p class="muted">Regra de ouro: <b>se a condição de segurança pode ser verdadeira sem que o usuário tenha permissão, o sistema está aberto.</b></p>
+  </div>
+</section>
+
+<!-- ================= 2 PYTHON / JS ================= -->
+<section class="pane" id="p2">
+  <h1>Python e JavaScript</h1>
+  <p class="muted">Mesma ideia, duas sintaxes. Aqui você escreve e roda de verdade: JavaScript roda na hora, Python roda no navegador (carrega na primeira execução).</p>
+
+  <div class="card">
+    <h2><span class="n">1</span>Lado a lado</h2>
+    <div class="two">
+      <div>
+        <h3>Python</h3>
+        <pre><code><span class="k">def</span> <span class="f">soma</span>(lista):
+    total = 0
+    <span class="k">for</span> n <span class="k">in</span> lista:
+        total += n
+    <span class="k">return</span> total
+
+<span class="f">print</span>(soma([1, 2, 3]))</code></pre>
+      </div>
+      <div>
+        <h3>JavaScript</h3>
+        <pre><code><span class="k">function</span> <span class="f">soma</span>(lista) {
+  <span class="k">let</span> total = 0;
+  <span class="k">for</span> (<span class="k">const</span> n <span class="k">of</span> lista) {
+    total += n;
+  }
+  <span class="k">return</span> total;
+}
+console.<span class="f">log</span>(<span class="f">soma</span>([1, 2, 3]));</code></pre>
+      </div>
+    </div>
+    <p class="muted">Diferenças que importam na prática: Python usa indentação para bloco, JS usa chaves. Python é tipagem dinâmica forte, JS converte tipo sozinho (<code>"1" == 1</code> é verdadeiro, por isso se usa <code>===</code>).</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">2</span>Editor: JavaScript</h2>
+    <textarea id="jsCode" rows="9">// Exercício: dobre cada número e mostre só os maiores que 5
+const nums = [1, 4, 3, 8];
+const dobrados = nums.map(n => n * 2);
+console.log(dobrados);
+console.log(dobrados.filter(n => n > 5));</textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" onclick="rodarJS()">▶ Rodar</button>
+      <button class="ghost" onclick="limpar('jsOut')">Limpar</button>
+      <span class="pill">limite 2,5s (protege contra loop infinito)</span>
+    </div>
+    <div class="out" id="jsOut"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">3</span>Editor: Python</h2>
+    <textarea id="pyCode" rows="9"># Exercício: conte quantos números pares existem
+nums = [1, 4, 3, 8, 10, 7]
+pares = [n for n in nums if n % 2 == 0]
+print("pares:", pares)
+print("total:", len(pares))</textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" onclick="rodarPY()">▶ Rodar Python</button>
+      <button class="ghost" onclick="limpar('pyOut')">Limpar</button>
+      <span class="pill" id="pyStatus">carrega na 1ª vez (~10 MB)</span>
+    </div>
+    <div class="out" id="pyOut"></div>
+  </div>
+
+  <div class="card">
+    <span class="badge">lógica de leitura de código</span>
+    <h2><span class="n">4</span>Como treinar leitura de código</h2>
+    <ol>
+      <li>Leia a função inteira antes de opinar. Nome mente, código não.</li>
+      <li>Liste o que vem de fora: parâmetro, header, body, banco. Isso é a "superfície de ataque".</li>
+      <li>Pergunte o que acontece se vier vazio, gigante, com aspas, negativo ou repetido.</li>
+      <li>Só então procure a falha: onde a suposição quebra.</li>
+    </ol>
+    <p class="muted">Esse método vale para ler código de qualquer linguagem. É o mesmo usado em auditoria profissional.</p>
+  </div>
+</section>
+
+<!-- ================= 3 HTTP & BANCO ================= -->
+<section class="pane" id="p3">
+  <h1>Requisição e banco de dados</h1>
+  <p class="muted">Tudo que o app faz vira uma requisição. Tudo que fica salvo vira banco. Entender esses dois é entender a maior parte das falhas reais.</p>
+
+  <div class="card">
+    <h2><span class="n">1</span>Anatomia de uma requisição</h2>
+    <pre><code>POST /api/login HTTP/1.1
+Host: servidor.com
+Content-Type: application/json
+
+{ "email": "eu@email.com", "senha": "123" }</code></pre>
+    <div class="kv" style="margin-top:10px">
+      <div>Método</div><div>GET lê, POST cria, PUT/PATCH altera, DELETE apaga</div>
+      <div>Rota</div><div>o caminho do recurso, ex: <code>/api/login</code></div>
+      <div>Headers</div><div>metadados: quem sou eu, que formato, que idioma</div>
+      <div>Body</div><div>o conteúdo enviado (JSON, formulário, binário)</div>
+      <div>Status</div><div>200 ok, 201 criado, 400 errado, 401 sem login, 403 sem permissão, 404 não existe, 500 quebrou</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">2</span>Simulador de servidor</h2>
+    <p class="muted">Monte a requisição e veja a resposta que o servidor daria. Aqui existe um mini servidor de verdade, com rotas e um banco em memória.</p>
+    <div class="row">
+      <select id="mMethod" style="max-width:120px"><option>GET</option><option>POST</option><option>DELETE</option></select>
+      <input id="mPath" value="/api/usuarios" style="flex:1;min-width:160px">
+    </div>
+    <textarea id="mBody" rows="4" style="margin-top:8px">{"nome":"Brayan","nivel":"admin"}</textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" onclick="enviar()">▶ Enviar requisição</button>
+      <span class="chip" onclick="setReq('GET','/api/usuarios','')">GET usuarios</span>
+      <span class="chip" onclick="setReq('GET','/api/usuarios/2','')">GET usuarios/2</span>
+      <span class="chip" onclick="setReq('GET','/api/admin','')">GET admin (sem token)</span>
+      <span class="chip" onclick="setReq('POST','/api/usuarios','{\n  \"nome\":\"Novo\",\n  \"nivel\":\"admin\"\n}')">POST criar</span>
+    </div>
+    <div class="out" id="httpOut" style="min-height:110px"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">3</span>Banco de dados na prática</h2>
+    <p class="muted">Um banco é tabela + linhas + colunas. Este laboratório tem duas tabelas reais: <code>usuarios</code> e <code>mensagens</code>. Escreva SQL e rode.</p>
+    <textarea id="sql" rows="3">SELECT nome, nivel FROM usuarios WHERE nivel = 'admin' ORDER BY nome LIMIT 5</textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" onclick="rodarSQL()">▶ Rodar SQL</button>
+      <span class="chip" onclick="setSQL(\"SELECT * FROM usuarios\")">todos</span>
+      <span class="chip" onclick="setSQL(\"SELECT * FROM mensagens WHERE usuario_id = 2\")">mensagens do 2</span>
+      <span class="chip" onclick="setSQL(\"SELECT nome, senha FROM usuarios\")">ver senhas</span>
+      <span class="chip" onclick="setSQL(\"INSERT INTO usuarios VALUES (9,'Teste','teste@x.com','123','user')\")">inserir</span>
+    </div>
+    <div id="sqlOut"></div>
+    <p class="hint">Repare: a query "ver senhas" funciona. Em sistema real, senha nunca fica salva assim, fica como hash. Guardar texto puro é uma falha real e comum.</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">4</span>Por que injeção acontece</h2>
+    <p>Quando o código junta o texto que o usuário digita direto na consulta, o usuário pode reescrever a consulta. Veja os dois lados:</p>
+    <div class="two">
+      <div>
+        <h3 style="color:var(--err)">Vulnerável</h3>
+        <pre><code>query = <span class="s">"SELECT * FROM usuarios "</span>
+query += <span class="s">"WHERE email = '"</span>
+query += email + <span class="s">"'"</span></code></pre>
+        <p class="muted">O que o usuário digita vira comando.</p>
+      </div>
+      <div>
+        <h3 style="color:var(--ok)">Correto</h3>
+        <pre><code>cursor.execute(
+  <span class="s">"SELECT * FROM usuarios WHERE email = ?"</span>,
+  (email,)
+)</code></pre>
+        <p class="muted">O valor viaja separado do comando.</p>
+      </div>
+    </div>
+    <h3>Teste no laboratório</h3>
+    <div class="row">
+      <input id="injEmail" value="' OR '1'='1" style="flex:1;min-width:150px">
+      <button class="ghost" onclick="demoInj(false)">Consulta ingênua</button>
+      <button class="btn" onclick="demoInj(true)">Consulta parametrizada</button>
+    </div>
+    <div class="out" id="injOut"></div>
+  </div>
+</section>
+
+<!-- ================= 4 DESAFIOS ================= -->
+<section class="pane" id="p4">
+  <h1>Ache a falha</h1>
+  <p class="muted">Três falhas reais, cada uma tira uma flag. O objetivo aqui é treinar o olho. Achar a falha é a metade técnica; a outra metade está na aba 5.</p>
+
+  <div class="card">
+    <span class="badge">desafio 1</span>
+    <h2><span class="n">1</span>Login do sistema</h2>
+    <pre><code>email = input()
+senha = input()
+q = "SELECT * FROM usuarios WHERE email='" + email +
+    "' AND senha='" + senha + "'"
+linhas = banco.executar(q)
+if len(linhas) &gt; 0:
+    entrar(linhas[0])</code></pre>
+    <p>Qual é o nome da falha?</p>
+    <input id="c1" placeholder="digite o nome da falha">
+    <div class="row" style="margin-top:8px"><button class="btn" onclick="checar(1)">Verificar</button>
+      <details><summary>Dica</summary><p class="muted">O texto digitado vira parte do comando SQL.</p></details></div>
+    <div id="c1out"></div>
+  </div>
+
+  <div class="card">
+    <span class="badge">desafio 2</span>
+    <h2><span class="n">2</span>Mensagem de outro usuário</h2>
+    <pre><code>GET /api/mensagens?usuario_id=5
+
+def mensagens(usuario_id):
+    return banco.query(
+      "SELECT * FROM mensagens WHERE usuario_id = ?",
+      (usuario_id,))</code></pre>
+    <p>A query está protegida. Mesmo assim, trocando o número na URL eu leio a conversa dos outros. Qual é o nome dessa falha?</p>
+    <input id="c2" placeholder="digite o nome da falha">
+    <div class="row" style="margin-top:8px"><button class="btn" onclick="checar(2)">Verificar</button>
+      <details><summary>Dica</summary><p class="muted">Falta checar se aquele recurso é da pessoa que está pedindo.</p></details></div>
+    <div id="c2out"></div>
+  </div>
+
+  <div class="card">
+    <span class="badge">desafio 3</span>
+    <h2><span class="n">3</span>O atalho no código</h2>
+    <pre><code>const API_KEY = "sk_live_9f2b7c...";
+const ADMIN_TOKEN = "montroy_admin_123";
+
+fetch("https://api.exemplo.com/dados",
+  { headers: { Authorization: ADMIN_TOKEN } })</code></pre>
+    <p>Esse arquivo vai pro celular de todo mundo. Qual é a falha?</p>
+    <input id="c3" placeholder="digite o nome da falha">
+    <div class="row" style="margin-top:8px"><button class="btn" onclick="checar(3)">Verificar</button>
+      <details><summary>Dica</summary><p class="muted">Tudo que está no app pode ser lido por quem instala.</p></details></div>
+    <div id="c3out"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">4</span>Mini CTF: achar a falha no código</h2>
+    <p class="muted">O código abaixo é um endpoint nosso de teste. Encontre a falha e escreva a flag no formato <code>MONTROY{...}</code> com a palavra-chave.</p>
+    <pre><code>@app.route("/api/trocar-senha", methods=["POST"])
+def trocar_senha():
+    uid = request.json["usuario_id"]
+    nova = request.json["nova_senha"]
+    db.update("usuarios", {"senha": nova}, {"id": uid})
+    return {"ok": True}</code></pre>
+    <div class="row">
+      <input id="ctf" placeholder="MONTROY{palavra}" style="flex:1;min-width:180px">
+      <button class="btn" onclick="ctfCheck()">Enviar</button>
+    </div>
+    <div id="ctfOut"></div>
+    <p class="hint">Pense: quem decide qual usuário está sendo alterado?</p>
+  </div>
+</section>
+
+<!-- ================= 5 ETICA ================= -->
+<section class="pane" id="p5">
+  <h1>A escolha depois da falha</h1>
+  <p>Você achou a falha. Daqui saem dois caminhos, e a habilidade é idêntica nos dois. A diferença é o que você faz com ela.</p>
+
+  <div class="two">
+    <div class="card" style="border-color:#5c1f1f">
+      <h3 style="color:var(--err)">Caminho 1 · explorar escondido</h3>
+      <ul>
+        <li>Risco jurídico real: acesso não autorizado é crime, mesmo "só olhando".</li>
+        <li>O dado de outra pessoa vira problema seu.</li>
+        <li>Ninguém confia em quem aparece assim. Não vira carreira.</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:#1f5c3d">
+      <h3 style="color:var(--ok)">Caminho 2 · reportar com responsabilidade</h3>
+      <ul>
+        <li>Programas de bug bounty pagam de centenas a dezenas de milhares de dólares.</li>
+        <li>Você ganha reputação pública e convite pra programas fechados.</li>
+        <li>O sistema fica melhor e você continua convidado a testar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">1</span>Regra que nunca muda</h2>
+    <ul>
+      <li>Teste só o que é seu, ou o que tem autorização escrita (programa de bounty, contrato, escopo publicado).</li>
+      <li>Ao encontrar falha: pare, registre a prova mínima, avise o dono, não baixe dado de terceiros.</li>
+      <li>Nunca use falha para acesso, cópia, venda ou chantagem.</li>
+    </ul>
+    <p class="muted">Aqui no laboratório tudo é ambiente nosso e simulado: nada do que você fizer aqui toca sistema de terceiro.</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">2</span>Gerador de relatório</h2>
+    <p class="muted">Preencha e sai um relatório pronto no formato que as empresas pedem.</p>
+    <div class="row"><input id="rAlvo" placeholder="Alvo / programa (ex: app X · /api/trocar-senha)" style="flex:1"></div>
+    <div class="row" style="margin-top:6px"><input id="rFalha" placeholder="Falha (ex: troca de senha sem checar dono)" style="flex:1"></div>
+    <div class="row" style="margin-top:6px"><input id="rImpacto" placeholder="Impacto (ex: tomar conta de qualquer usuário)" style="flex:1"></div>
+    <div class="row" style="margin-top:6px"><input id="rProva" placeholder="Prova mínima (ex: POST com usuario_id de outro retorna ok)" style="flex:1"></div>
+    <button class="btn" style="margin-top:10px" onclick="gerarRelatorio()">Gerar relatório</button>
+    <pre id="relOut" style="display:none"></pre>
+    <button class="ghost" id="relCopy" style="display:none" onclick="copiarRel()">Copiar</button>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">3</span>Trilha de estudo sugerida</h2>
+    <ol>
+      <li><b>Semana 1:</b> lógica e leitura de código. Ler 10 funções por dia e explicar em voz alta o que cada uma faz.</li>
+      <li><b>Semana 2:</b> Python e JS até escrever sem travar: lista, dicionário, função, laço, condição.</li>
+      <li><b>Semana 3:</b> HTTP e banco. Montar uma API pequena com login, salvar e ler dados.</li>
+      <li><b>Semana 4:</b> caçar falha no seu próprio código, escrever relatório, corrigir e documentar.</li>
+    </ol>
+    <p class="muted">O passo que quase todo mundo pula é o 4. É justamente o que separa quem estuda de quem trabalha com isso.</p>
+  </div>
+</section>
+</div>
+
+<footer>
+  <span id="progTxt">progresso 0%</span>
+  <div class="bar"><i id="progBar"></i></div>
+  <span class="muted">MONTROY</span>
+</footer>
+
+<script>
+(function(){
+"use strict";
+
+window.addEventListener('error', function(e){
+  var d = document.getElementById('__err');
+  if (!d) {
+    d = document.createElement('div');
+    d.id = '__err';
+    d.style.cssText = 'position:fixed;left:8px;right:8px;bottom:64px;background:#3a0d0d;border:1px solid #ff5c5c;color:#ffb3b3;padding:8px;border-radius:8px;font:12px monospace;z-index:99;white-space:pre-wrap';
+    document.body.appendChild(d);
+  }
+  d.textContent = 'ERRO NO SITE: ' + e.message + ' @ linha ' + e.lineno;
+});
+
+
+/* ---------- navegação ---------- */
+var tabs = document.querySelectorAll('#tabs button');
+tabs.forEach(function(b){
+  b.addEventListener('click', function(){
+    tabs.forEach(function(x){ x.classList.toggle('on', x === b); });
+    document.querySelectorAll('.pane').forEach(function(p){
+      p.classList.toggle('on', p.id === b.dataset.pane);
+    });
+    window.scrollTo({top:0, behavior:'smooth'});
+  });
+});
+
+/* ---------- progresso ---------- */
+var KEY = 'montroy_estudo_v1';
+var state = {xp:0, done:{}};
+try { var s = localStorage.getItem(KEY); if (s) state = JSON.parse(s); } catch(e){}
+function salvar(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} feitos(); }
+function ganhar(pts, id){
+  if (id) { if (state.done[id]) return; state.done[id] = true; }
+  state.xp += pts; salvar(); feitos();
+}
+function feitos(){
+  var pct = Math.min(100, Math.round(state.xp));
+  document.getElementById('progBar').style.width = pct + '%';
+  document.getElementById('progTxt').textContent = 'progresso ' + pct + '%';
+  document.getElementById('xp').textContent = state.xp;
+}
+salvar();
+
+/* ---------- quiz lógica ---------- */
+var QUIZ = [
+  {
+    q: 'Um app manda o campo "nivel" do celular e o servidor confia. Qual é o problema?',
+    o: ['Nada, o app é confiável', 'O cliente controla a decisão de permissão', 'Só fica lento'],
+    a: 1,
+    e: 'Tudo que vem do cliente pode ser alterado. Permissão tem que ser decidida no servidor.'
+  },
+  {
+    q: 'Qual condição protege de verdade um painel de admin?',
+    o: ['if (usuario) { liberar() }', 'if (usuario.nivel === "admin" && usuario.ativo) { liberar() }', 'if (!usuario.bloqueado || true) { liberar() }'],
+    a: 1,
+    e: 'Precisa exigir a permissão específica e um estado válido. O terceiro sempre libera.'
+  },
+  {
+    q: 'Um laço que nunca muda a variável de controle gera:',
+    o: ['resultado correto mais rápido', 'loop infinito', 'erro de sintaxe'],
+    a: 1,
+    e: 'Sem alterar a condição, o laço nunca termina. É a falha de negação de serviço mais simples que existe.'
+  },
+  {
+    q: 'Antes de procurar falha num código, o primeiro passo é:',
+    o: ['rodar um scanner automático', 'entender o que a função deveria fazer', 'testar tudo aleatoriamente'],
+    a: 1,
+    e: 'Sem saber a intenção, você não sabe o que é "errado". A falha é sempre um desvio da intenção.'
+  }
+];
+var qbox = document.getElementById('quiz1');
+QUIZ.forEach(function(item, i){
+  var wrap = document.createElement('div');
+  wrap.style.margin = '14px 0';
+  var t = document.createElement('p'); t.innerHTML = '<b>' + (i+1) + '.</b> ' + item.q;
+  wrap.appendChild(t);
+  item.o.forEach(function(txt, j){
+    var b = document.createElement('div');
+    b.className = 'opt'; b.textContent = txt;
+    b.onclick = function(){
+      if (wrap.dataset.done) return;
+      wrap.dataset.done = '1';
+      var certo = j === item.a;
+      b.classList.add(certo ? 'right' : 'wrong');
+      if (!certo) wrap.querySelectorAll('.opt')[item.a].classList.add('right');
+      var e = document.createElement('p');
+      e.className = 'muted'; e.textContent = (certo ? '✔ ' : '✖ ') + item.e;
+      wrap.appendChild(e);
+      if (certo) ganhar(5, 'quiz' + i);
+    };
+    wrap.appendChild(b);
+  });
+  qbox.appendChild(wrap);
+});
+
+/* ---------- rodar JS em iframe isolado com limite de tempo ---------- */
+var _jsSeq = 0;
+window.addEventListener('message', function(ev){
+  var d = ev.data;
+  if (!d || !d.__montroy) return;
+  var box = document.getElementById('jsOut');
+  var timer = window['_tm_' + d.__montroy];
+  if (timer) clearTimeout(timer);
+  var fr = document.getElementById('_fr_' + d.__montroy);
+  if (fr && fr.parentNode) fr.parentNode.removeChild(fr);
+  box.className = 'out' + (d.ok ? '' : ' err');
+  box.textContent = (d.out ? d.out + '\n' : '') + (d.err ? 'ERRO: ' + d.err : '');
+  if (d.ok) ganhar(3);
+});
+
+window.rodarJS = function(){
+  var box = document.getElementById('jsOut');
+  var code = document.getElementById('jsCode').value;
+  var id = 'js' + (++_jsSeq);
+  box.className = 'out';
+  box.textContent = 'rodando...';
+
+  var runner = '<!doctype html><meta charset="utf-8"><script>'
+    + 'function f(v){try{return typeof v==="object"?JSON.stringify(v):String(v)}catch(e){return String(v)}}'
+    + 'var logs=[];'
+    + 'var c={log:function(){logs.push([].slice.call(arguments).map(f).join(" "))},'
+    + 'error:function(){logs.push("erro: "+[].slice.call(arguments).map(f).join(" "))},'
+    + 'warn:function(){logs.push([].slice.call(arguments).map(f).join(" "))}};'
+    + 'try{ new Function("console", ' + JSON.stringify(code) + ')(c);'
+    + 'parent.postMessage({__montroy:' + JSON.stringify(id) + ',ok:true,out:logs.join("\\n")},"*"); }'
+    + 'catch(err){ parent.postMessage({__montroy:' + JSON.stringify(id) + ',ok:false,out:logs.join("\\n"),err:String(err)},"*"); }'
+    + '<\/script>';
+
+  var fr = document.createElement('iframe');
+  fr.id = '_fr_' + id;
+  fr.setAttribute('sandbox', 'allow-scripts');
+  fr.style.display = 'none';
+  fr.srcdoc = runner;
+  document.body.appendChild(fr);
+
+  window['_tm_' + id] = setTimeout(function(){
+    var el = document.getElementById('_fr_' + id);
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+    box.className = 'out err';
+    box.textContent = 'Tempo esgotado (2,5 s). Provável loop infinito: veja se a variável do laço muda a cada volta.';
+  }, 2500);
+};
+
+/* ---------- rodar Python (Pyodide) ---------- */
+var pyodide = null, carregandoPy = false;
+function carregarPy(){
+  if (pyodide) return Promise.resolve(pyodide);
+  if (carregandoPy) return new Promise(function(ok){
+    var t = setInterval(function(){ if (pyodide) { clearInterval(t); ok(pyodide); } }, 300);
+  });
+  carregandoPy = true;
+  return new Promise(function(ok, falha){
+    var sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js';
+    sc.onload = function(){
+      window.loadPyodide({indexURL:'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/'})
+        .then(function(p){ pyodide = p; carregandoPy = false; ok(p); })
+        .catch(function(e){ carregandoPy = false; falha(e); });
+    };
+    sc.onerror = function(){ carregandoPy = false; falha(new Error('sem internet')); };
+    document.head.appendChild(sc);
+  });
+}
+window.rodarPY = function(){
+  var out = document.getElementById('pyOut');
+  var st = document.getElementById('pyStatus');
+  var code = document.getElementById('pyCode').value;
+  out.className = 'out';
+  out.textContent = 'carregando Python...';
+  st.textContent = 'carregando...';
+  carregarPy().then(function(py){
+    st.textContent = 'Python pronto';
+    py.runPython("import sys, io\n_buf = io.StringIO()\nsys.stdout = _buf\nsys.stderr = _buf");
+    var erro = '';
+    try { py.runPython(code); } catch(e){ erro = String(e.message || e); }
+    var saida = py.runPython("_buf.getvalue()");
+    out.className = 'out' + (erro ? ' err' : '');
+    out.textContent = (saida || '') + (erro ? '\nERRO: ' + erro : '');
+    if (!erro) ganhar(3);
+  }).catch(function(){
+    out.className = 'out err';
+    out.textContent = 'Não consegui carregar o Python agora (precisa de internet na primeira vez). O JavaScript continua funcionando offline.';
+    st.textContent = 'sem conexão';
+  });
+};
+window.limpar = function(id){
+  var el = document.getElementById(id);
+  el.textContent = ''; el.className = 'out';
+};
+
+/* ---------- mini servidor HTTP + banco ---------- */
+var DB = {
+  usuarios: [
+    {id:1, nome:'Brayan', email:'brayan@montroy.dev', senha:'montroy123', nivel:'admin'},
+    {id:2, nome:'Ana',    email:'ana@montroy.dev',    senha:'ana2026',   nivel:'user'},
+    {id:3, nome:'Lucas',  email:'lucas@montroy.dev',  senha:'123456',    nivel:'user'},
+    {id:4, nome:'Rita',   email:'rita@montroy.dev',   senha:'senha',     nivel:'user'}
+  ],
+  mensagens: [
+    {id:1, usuario_id:1, texto:'primeira mensagem'},
+    {id:2, usuario_id:2, texto:'oi, tudo bem?'},
+    {id:3, usuario_id:2, texto:'segredo da ana'},
+    {id:4, usuario_id:3, texto:'teste'}
+  ]
+};
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+
+window.setReq = function(m, p, b){
+  document.getElementById('mMethod').value = m;
+  document.getElementById('mPath').value = p;
+  document.getElementById('mBody').value = b;
+};
+
+function resposta(status, motivo, corpo, extra){
+  var linhas = ['HTTP/1.1 ' + status + ' ' + motivo];
+  var base = {
+    'Content-Type': 'application/json',
+    'Server': 'MONTROY-lab/1.0',
+    'Date': new Date().toUTCString()
+  };
+  if (extra) for (var k in extra) base[k] = extra[k];
+  var bodyStr = JSON.stringify(corpo, null, 2);
+  base['Content-Length'] = bodyStr.length;
+  for (var k2 in base) linhas.push(k2 + ': ' + base[k2]);
+  linhas.push('');
+  linhas.push(bodyStr);
+  return linhas.join('\n');
+}
+
+window.enviar = function(){
+  var out = document.getElementById('httpOut');
+  var metodo = document.getElementById('mMethod').value;
+  var rota = document.getElementById('mPath').value.trim();
+  var bodyTxt = document.getElementById('mBody').value.trim();
+  var corpo = null;
+  if (bodyTxt) { try { corpo = JSON.parse(bodyTxt); } catch(e){ corpo = {'_aviso':'body não é JSON válido'}; } }
+
+  var req = metodo + ' ' + rota + ' HTTP/1.1\nHost: montroy-2019.onrender.com\nContent-Type: application/json\n\n' + (bodyTxt || '');
+  var res;
+
+  /* token simulado: sem header Authorization, o servidor trata como visitante */
+  if (metodo === 'GET' && rota === '/api/usuarios') {
+    res = resposta(200, 'OK', {usuarios: DB.usuarios.map(function(u){
+      return {id:u.id, nome:u.nome, email:u.email, nivel:u.nivel};
+    })});
+  } else if (metodo === 'GET' && /^\/api\/usuarios\/\d+$/.test(rota)) {
+    var id = parseInt(rota.split('/').pop(), 10);
+    var u = DB.usuarios.filter(function(x){ return x.id === id; })[0];
+    res = u ? resposta(200, 'OK', {id:u.id, nome:u.nome, email:u.email, nivel:u.nivel})
+            : resposta(404, 'Not Found', {erro:'usuário não existe'});
+  } else if (metodo === 'GET' && rota === '/api/admin') {
+    res = resposta(401, 'Unauthorized', {erro:'sem token de sessão'});
+  } else if (metodo === 'POST' && rota === '/api/usuarios') {
+    if (!corpo || !corpo.nome) {
+      res = resposta(400, 'Bad Request', {erro:'campo nome é obrigatório'});
+    } else {
+      var novo = {id: DB.usuarios.length + 1, nome: corpo.nome, email: corpo.email || '', senha: '******', nivel: corpo.nivel || 'user'};
+      DB.usuarios.push(novo);
+      res = resposta(201, 'Created', {id:novo.id, nome:novo.nome, nivel:novo.nivel},
+        {'Location':'/api/usuarios/' + novo.id});
+    }
+  } else if (metodo === 'DELETE' && /^\/api\/usuarios\/\d+$/.test(rota)) {
+    var did = parseInt(rota.split('/').pop(), 10);
+    var antes = DB.usuarios.length;
+    DB.usuarios = DB.usuarios.filter(function(x){ return x.id !== did; });
+    res = DB.usuarios.length < antes ? resposta(200, 'OK', {removido: did})
+                                     : resposta(404, 'Not Found', {erro:'usuário não existe'});
+  } else {
+    res = resposta(404, 'Not Found', {erro:'rota não existe', rota: rota});
+  }
+  out.textContent = '→  PEDIDO\n' + req + '\n\n←  RESPOSTA\n' + res;
+  ganhar(2);
+};
+
+/* ---------- mini SQL ---------- */
+function erroSQL(msg){ return '<div class="out err">' + msg + '</div>'; }
+function tabelaHTML(cols, rows){
+  var h = '<table><tr>' + cols.map(function(c){ return '<th>' + c + '</th>'; }).join('') + '</tr>';
+  rows.forEach(function(r){
+    h += '<tr>' + cols.map(function(c){
+      var v = r[c];
+      return '<td>' + (v === undefined || v === null ? '' : String(v)) + '</td>';
+    }).join('') + '</tr>';
+  });
+  h += '</table>';
+  return h + '<p class="muted">' + rows.length + ' linha(s)</p>';
+}
+function cmp(a, b){ var na = parseFloat(a), nb = parseFloat(b); if (!isNaN(na) && !isNaN(nb)) return na - nb; return String(a).localeCompare(String(b)); }
+
+window.rodarSQL = function(){
+  var q = document.getElementById('sql').value.trim().replace(/;+$/,'');
+  var out = document.getElementById('sqlOut');
+  var alvo = DB;
+  var mIns = /^insert\s+into\s+(\w+)\s+values\s*\((.*)\)$/i.exec(q);
+  if (mIns) {
+    var tab = mIns[1];
+    if (!alvo[tab]) { out.innerHTML = erroSQL('tabela "' + tab + '" não existe. Use usuarios ou mensagens.'); return; }
+    var vals = mIns[2].split(',').map(function(v){
+      v = v.trim();
+      if (/^'.*'$/.test(v) || /^".*"$/.test(v)) return v.slice(1, -1);
+      var n = parseFloat(v); return isNaN(n) ? v : n;
+    });
+    var cols = Object.keys(alvo[tab][0]);
+    var obj = {};
+    cols.forEach(function(c, i){ obj[c] = vals[i]; });
+    alvo[tab].push(obj);
+    out.innerHTML = '<div class="out">INSERT ok · ' + tab + ' agora tem ' + alvo[tab].length + ' linha(s)</div>' + tabelaHTML(cols, alvo[tab]);
+    ganhar(2);
+    return;
+  }
+  var m = /^select\s+(.+?)\s+from\s+(\w+)(?:\s+where\s+(.+?))?(?:\s+order\s+by\s+(\w+)(\s+asc|\s+desc)?)?(?:\s+limit\s+(\d+))?$/i.exec(q);
+  if (!m) { out.innerHTML = erroSQL('Só entendo SELECT simples e INSERT. Exemplo: SELECT nome FROM usuarios WHERE nivel = &quot;admin&quot;'); return; }
+  var campos = m[1].trim(), tab2 = m[2], onde = m[3], ord = m[4], dir = (m[5] || ' asc').trim().toLowerCase(), lim = m[6];
+  if (!alvo[tab2]) { out.innerHTML = erroSQL('tabela "' + tab2 + '" não existe. Temos: usuarios, mensagens'); return; }
+  var rows = clone(alvo[tab2]);
+
+  if (onde) {
+    var conds = onde.split(/\s+and\s+/i);
+    var ok = true;
+    conds.forEach(function(c){
+      var mm = /^(\w+)\s*(=|!=|<>|>=|<=|>|<)\s*(.+)$/.exec(c.trim());
+      if (!mm) { ok = false; return; }
+      var col = mm[1], op = mm[2], val = mm[3].trim().replace(/^['"]|['"]$/g, '');
+      rows = rows.filter(function(r){
+        var a = r[col], b = val;
+        var na = parseFloat(a), nb = parseFloat(b);
+        var num = !isNaN(na) && !isNaN(nb);
+        switch(op){
+          case '=':  return num ? na === nb : String(a) === b;
+          case '!=': case '<>': return num ? na !== nb : String(a) !== b;
+          case '>':  return num ? na > nb : String(a) > b;
+          case '<':  return num ? na < nb : String(a) < b;
+          case '>=': return num ? na >= nb : String(a) >= b;
+          case '<=': return num ? na <= nb : String(a) <= b;
+        }
+        return false;
+      });
+    });
+    if (!ok) { out.innerHTML = erroSQL('condição não suportada: ' + onde); return; }
+  }
+  if (ord) rows.sort(function(a, b){ var d = cmp(a[ord], b[ord]); return dir === 'desc' ? -d : d; });
+  if (lim) rows = rows.slice(0, parseInt(lim, 10));
+
+  var cols2;
+  if (campos === '*') cols2 = Object.keys(rows[0] || alvo[tab2][0]);
+  else cols2 = campos.split(',').map(function(c){ return c.trim(); });
+  out.innerHTML = tabelaHTML(cols2, rows);
+  ganhar(2);
+};
+window.setSQL = function(q){ document.getElementById('sql').value = q; rodarSQL(); };
+
+/* ---------- demo de injeção ---------- */
+window.demoInj = function(parametrizado){
+  var email = document.getElementById('injEmail').value;
+  var out = document.getElementById('injOut');
+  var senha = 'qualquer';
+  if (parametrizado) {
+    var achou = DB.usuarios.filter(function(u){ return u.email === email; });
+    out.className = 'out';
+    out.textContent = 'Consulta executada:\nSELECT * FROM usuarios WHERE email = ? [valor: "' + email + '"]\n\n'
+      + (achou.length ? 'ACESSO LIBERADO para ' + achou[0].nome + ' (porque o valor é tratado como texto, não como comando)'
+                      : 'ACESSO NEGADO: e-mail não confere com ninguém.');
+  } else {
+    var query = "SELECT * FROM usuarios WHERE email = '" + email + "'";
+    out.className = 'out';
+    var venceu = /or\s+['"]?1['"]?\s*=\s*['"]?1/i.test(email) || email.indexOf("' or ") === 0;
+    out.textContent = 'Consulta executada (texto montado na mão):\n' + query + '\n\n'
+      + (venceu ? 'ACESSO LIBERADO para ' + DB.usuarios[0].nome + '.\nO trecho digitado fechou a aspas e virou comando: a condição final ficou verdadeira para todos.'
+                : 'ACESSO NEGADO (sem injeção nesta entrada).')
+      + '\n\nAgora teste a mesma entrada no botão "Consulta parametrizada".';
+  }
+};
+
+/* ---------- desafios ---------- */
+var ACEITA = {
+  1: ['injecao sql', 'injeção sql', 'sql injection', 'sqli', 'injecao', 'injeção'],
+  2: ['idor', 'referencia direta', 'referência direta', 'autorizacao', 'autorização', 'falta de autorizacao', 'broken access control', 'controle de acesso', 'id direct'],
+  3: ['segredo no codigo', 'segredo no código', 'chave exposta', 'hardcoded', 'credencial exposta', 'segredo exposto', 'api key', 'chave hardcoded']
+};
+function normaliza(s){
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+}
+window.checar = function(n){
+  var v = normaliza(document.getElementById('c' + n).value || '');
+  var alvo = document.getElementById('c' + n + 'out');
+  var lista = ACEITA[n].map(normaliza);
+  var certo = lista.some(function(t){ return v === t || (v.length > 3 && t.indexOf(v) === 0) || v.indexOf(t) === 0; });
+  var explic = {
+    1: 'Era injeção de SQL. Solução: consulta parametrizada, para o valor nunca virar comando.',
+    2: 'Era IDOR (referência direta a objeto). Solução: checar no servidor se o recurso pertence a quem pede.',
+    3: 'Era segredo embutido no código. Solução: o segredo fica só no servidor; o app nunca recebe token administrativo.'
+  };
+  alvo.innerHTML = '<div class="out' + (certo ? '' : ' err') + '">'
+    + (certo ? '✔ Certo! ' : '✖ Ainda não. ') + explic[n] + '</div>';
+  if (certo) ganhar(10, 'desafio' + n);
+};
+window.ctfCheck = function(){
+  var v = normaliza(document.getElementById('ctf').value || '');
+  var out = document.getElementById('ctfOut');
+  var certo = /^montroy ?\{?(idor|autorisacao|autorizacao|broken access control|controle de acesso)\}?$/.test(v);
+  out.innerHTML = '<div class="out' + (certo ? '' : ' err') + '">'
+    + (certo ? '✔ Flag correta. A falha é IDOR: o endpoint aceita usuario_id do cliente e troca a senha de qualquer conta.'
+             : '✖ Ainda não. O endpoint recebe usuario_id de quem chama e não verifica se aquela conta é da pessoa logada.')
+    + '</div>';
+  if (certo) ganhar(15, 'ctf');
+};
+
+/* ---------- relatório ---------- */
+window.gerarRelatorio = function(){
+  var alvo = document.getElementById('rAlvo').value || '[alvo]';
+  var falha = document.getElementById('rFalha').value || '[falha]';
+  var impacto = document.getElementById('rImpacto').value || '[impacto]';
+  var prova = document.getElementById('rProva').value || '[prova]';
+  var txt = 'TÍTULO\n' + falha + '\n\n'
+    + 'ALVO\n' + alvo + '\n\n'
+    + 'RESUMO\nEncontrei uma falha de segurança que permite ' + impacto + '.\n\n'
+    + 'PASSOS PARA REPRODUZIR\n1. Acessar ' + alvo + '\n2. ' + prova + '\n3. Observar que a ação é aceita sem verificação de permissão.\n\n'
+    + 'IMPACTO\n' + impacto + '.\n\n'
+    + 'PROVA MÍNIMA\n' + prova + '\n\n'
+    + 'SUGESTÃO DE CORREÇÃO\nValidar no servidor se o usuário autenticado tem permissão sobre o recurso, antes de executar a ação.\n\n'
+    + 'DECLARAÇÃO\nNenhum dado de terceiro foi acessado, copiado ou divulgado. Aguardo orientação para reteste.\n';
+  var pre = document.getElementById('relOut');
+  pre.style.display = 'block';
+  pre.textContent = txt;
+  document.getElementById('relCopy').style.display = 'inline-block';
+  ganhar(8, 'relatorio');
+};
+window.copiarRel = function(){
+  var t = document.getElementById('relOut').textContent;
+  if (navigator.clipboard) navigator.clipboard.writeText(t);
+  else {
+    var ta = document.createElement('textarea');
+    ta.value = t; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+  }
+  var b = document.getElementById('relCopy');
+  b.textContent = 'Copiado';
+  setTimeout(function(){ b.textContent = 'Copiar'; }, 1500);
+};
+
+feitos();
+})();
+</script>
+</body>
+</html>
