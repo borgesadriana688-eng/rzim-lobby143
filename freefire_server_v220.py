@@ -243,7 +243,7 @@ def app_info():
         "version": CLIENT_VERSION,
         "game_server": f"{GAME_IP}:{GAME_PORT}",
         "update_url": "",
-        "notice": {"title": "Desenvolvido por Brayan", "content": "Servidor privado RZIM - conta Administrador com tudo liberado", "show": True}
+        "notice": {"title": "MONTROY", "content": "BEM VINDO AO MONTROY - DESENVOLVIDO POR BRAYAN", "show": True}
     })
 
 @app.route('/app/feedback', methods=['POST', 'GET'])
@@ -990,21 +990,6 @@ def fb_activities(app_id):
 def debug_phone():
     return "ok"
 
-@app.route("/_logs", methods=["GET"])
-def _dump_all_logs():
-    import os as _os
-    out = {}
-    for fn in ("requests.log", "unknown_endpoints.log", "response_samples.log"):
-        try:
-            with open(_os.path.join(_os.environ.get("LOG_DIR", "."), fn)) as f:
-                out[fn] = f.read()[-8000:]
-        except Exception as e:
-            out[fn] = f"erro: {e}"
-    return jsonify(out)
-
-# FIX 19/10: os decoradores catch-all estavam em cima de _dump_all_logs
-# (que nao recebe 'path') -> todo endpoint desconhecido dava TypeError/500
-# (LogEvent, GetCardsAndIAPInfo etc). Movidos pra catch_all, como deve ser.
 @app.route('/', defaults={'path': ''}, methods=['GET', 'POST', 'PUT', 'DELETE'])
 @app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def catch_all(path):
@@ -1015,7 +1000,8 @@ def catch_all(path):
     except Exception:
         pass
     print(f"[UNKNOWN] {request.method} /{path}", flush=True)
-    # Rotas do lobby 1.70 (CamelCase, protobuf): corpo vazio = mensagem protobuf vazia valida
-    if path and path[0].isupper() and "/" not in path:
+    # Rotas do lobby 1.70 (CamelCase, protobuf): corpo vazio = mensagem protobuf vazia valida.
+    # So quando LOBBY_170=1 (servico do lobby 1.43/1.70). Clientes 1.25/1.28 esperam JSON.
+    if os.environ.get("LOBBY_170") == "1" and path and path[0].isupper() and "/" not in path:
         return b"", 200, {"Content-Type": "application/octet-stream"}
     return jsonify({"server_time": now(), "status": "ok"})
