@@ -78,6 +78,7 @@ def resposta(payload, status=200):
 
 # ---------------------------------------------------------------- descoberta
 @app.route("/ntl/api/GateInfo.php", methods=["GET", "POST"])
+@app.route("/ntl/api/GateInfo.php/", methods=["GET", "POST"])
 def gate_info():
     """
     O jogo chama isso primeiro para saber onde ficam os servidores.
