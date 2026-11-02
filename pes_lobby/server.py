@@ -77,6 +77,8 @@ def resposta(payload, status=200):
 
 
 # ---------------------------------------------------------------- descoberta
+@app.route("/g", methods=["GET", "POST"])
+@app.route("/g.php", methods=["GET", "POST"])
 @app.route("/ntl/api/GateInfo.php", methods=["GET", "POST"])
 @app.route("/ntl/api/GateInfo.php/", methods=["GET", "POST"])
 def gate_info():
