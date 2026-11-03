@@ -42,7 +42,7 @@ LOG_FILES = {
 KNOWN_PREFIXES = (
     "/v1/settings", "/device/initialize", "/users/account-info", "/v1/batch",
     "/universal-app-configuration", "/catalog/", "/mobileapi/", "/notifications/",
-    "/crash/upload", "/download/", "/_logs", "/health", "/avatar/v1/",
+    "/crash/upload", "/download/", "/_logs", "/health", "/avatar/v1/", "/games/v1/", "/thumbnails/v1/", "/catalog/v1/", "/economy/v1/", "/users/v1/", "/friends/v1/", "/my/", "/upgrades/",
 )
 
 CDN_PATTERNS = [
@@ -469,6 +469,198 @@ def logs_endpoint():
     except Exception:
         lines = []
     return jsonify({"lines": lines})
+
+
+
+# ======================================================================
+# MONTROY: telas web (saldo/conta/robux) + dados reais de jogos e loja
+# ======================================================================
+UA_REAL = "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Chrome/120 Mobile"
+ME = {"id": 1, "name": "Player1", "displayName": "Player1"}
+_cache = {}
+
+def _get_up(url, ttl=300, params=None):
+    key = url + str(sorted((params or {}).items()))
+    hit = _cache.get(key)
+    if hit and time.time() - hit[0] < ttl:
+        return hit[1]
+    try:
+        r = rq.get(url, params=params, headers={"User-Agent": UA_REAL, "Accept": "application/json"}, timeout=20)
+        data = r.json() if r.status_code == 200 else None
+    except Exception as e:
+        log_line("requests.log", "UP FAIL %s (%s)" % (url, e))
+        data = None
+    if data is not None:
+        _cache[key] = (time.time(), data)
+    return data
+
+def _html(titulo, corpo):
+    page = (
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>%s</title><style>"
+        "body{margin:0;font-family:Arial,sans-serif;background:#f2f4f5;color:#222}"
+        ".top{background:#fff;padding:18px;text-align:center;font-weight:bold;font-size:18px;border-bottom:1px solid #ddd}"
+        ".box{background:#fff;margin:12px;padding:16px;border-radius:10px;box-shadow:0 1px 3px #0002}"
+        ".row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #eee}"
+        ".row:last-child{border:0}.k{color:#777}.v{font-weight:bold}"
+        ".big{font-size:34px;text-align:center;margin:14px 0;color:#00a2ff;font-weight:bold}"
+        ".pk{border:2px solid #00a2ff;border-radius:10px;padding:12px;margin:8px 0;display:flex;justify-content:space-between}"
+        ".brand{text-align:center;color:#aaa;font-size:12px;padding:14px}"
+        "</style></head><body><div class='top'>%s</div>%s"
+        "<div class='brand'>MONTROY</div></body></html>"
+    ) % (titulo, titulo, corpo)
+    return Response(page, content_type="text/html; charset=utf-8")
+
+@app.route("/my/balance", methods=["GET"])
+def web_balance():
+    log_request()
+    corpo = ("<div class='box'><div class='k' style='text-align:center'>Seu saldo</div>"
+             "<div class='big'>R$ 0 Robux</div>"
+             "<div class='row'><span class='k'>Usuario</span><span class='v'>Player1</span></div>"
+             "<div class='row'><span class='k'>Pendente</span><span class='v'>0</span></div></div>")
+    return _html("Saldo: 0 Robux", corpo)
+
+@app.route("/my/account", methods=["GET"])
+def web_account():
+    log_request()
+    corpo = ("<div class='box'>"
+             "<div class='row'><span class='k'>Nome de usuario</span><span class='v'>Player1</span></div>"
+             "<div class='row'><span class='k'>Nome de exibicao</span><span class='v'>Player1</span></div>"
+             "<div class='row'><span class='k'>ID da conta</span><span class='v'>1</span></div>"
+             "<div class='row'><span class='k'>Pais</span><span class='v'>Brasil</span></div>"
+             "<div class='row'><span class='k'>Assinatura</span><span class='v'>Sem Premium</span></div>"
+             "<div class='row'><span class='k'>Robux</span><span class='v'>0</span></div>"
+             "<div class='row'><span class='k'>Servidor</span><span class='v'>MONTROY</span></div>"
+             "</div>")
+    return _html("Informacoes da conta", corpo)
+
+@app.route("/upgrades/robux", methods=["GET"])
+def web_robux():
+    log_request()
+    pk = "".join("<div class='pk'><b>%s Robux</b><span>indisponivel</span></div>" % q
+                 for q in ("400", "800", "1.700", "4.500"))
+    corpo = ("<div class='box'><div class='k'>Pacotes de Robux</div>%s"
+             "<div class='k' style='margin-top:10px'>As compras estao desativadas neste servidor MONTROY.</div></div>" % pk)
+    return _html("Comprar Robux", corpo)
+
+# ---------- API de jogos / loja (prefixos que o app usa) ----------
+def _universes(ids):
+    d = _get_up("https://games.roblox.com/v1/games", params={"universeIds": ",".join(str(i) for i in ids)}) or {}
+    return d.get("data", [])
+
+def _icons(ids):
+    d = _get_up("https://thumbnails.roblox.com/v1/games/icons",
+                params={"universeIds": ",".join(str(i) for i in ids), "size": "150x150", "format": "Png"}) or {}
+    return {x["targetId"]: x.get("imageUrl", "") for x in d.get("data", [])}
+
+POPULARES = [66654135,994732206,383310974,6035872082,3317771874,2440500124,7436755782,4777817887,5578556129,1511883870]
+
+def _home_games():
+    us = _universes(POPULARES)
+    ic = _icons([u["id"] for u in us]) if us else {}
+    out = []
+    for u in us:
+        out.append({
+            "universeId": u["id"], "placeId": u.get("rootPlaceId"), "name": u.get("name"),
+            "playerCount": u.get("playing", 0), "totalUpVotes": 0, "totalDownVotes": 0,
+            "creatorName": (u.get("creator") or {}).get("name", ""),
+            "creatorId": (u.get("creator") or {}).get("id", 0),
+            "imageUrl": ic.get(u["id"], ""),
+        })
+    return out
+
+@app.route("/games/v1/games/sorts", methods=["GET"])
+def games_sorts():
+    log_request()
+    return jsonify({"sorts": [
+        {"token": "popular", "name": "Populares", "displayName": "Populares", "gameSetTypeId": 1, "gameSetTargetId": None, "timeOptionsAvailable": False, "genreOptionsAvailable": False, "numberOfRows": 1, "numberOfGames": 12, "isDefaultSort": True, "contextUniverseId": None, "contextCountryRegionId": 0, "tokenExpiryInSeconds": 3600},
+    ], "timeFilters": [], "genreFilters": [], "gameFilters": []})
+
+@app.route("/games/v1/games/list", methods=["GET"])
+def games_list():
+    log_request()
+    g = _home_games()
+    return jsonify({"games": [{
+        "creatorId": x["creatorId"], "creatorName": x["creatorName"], "creatorType": "User",
+        "creatorHasVerifiedBadge": False, "totalUpVotes": x["totalUpVotes"], "totalDownVotes": x["totalDownVotes"],
+        "universeId": x["universeId"], "name": x["name"], "placeId": x["placeId"],
+        "playerCount": x["playerCount"], "imageToken": "T_%d" % x["universeId"], "isSponsored": False,
+        "nativeAdData": "", "price": None, "analyticsIdentifier": None, "gameDescription": "",
+    } for x in g], "suggestedKeyword": None, "correctedKeyword": None, "filtersApplied": None,
+        "nextPageExclusiveStartId": None, "sortToken": "popular"})
+
+@app.route("/games/v1/games", methods=["GET"])
+def games_detail():
+    log_request()
+    ids = (request.args.get("universeIds") or "").split(",")
+    ids = [i for i in ids if i.strip().isdigit()]
+    d = _get_up("https://games.roblox.com/v1/games", params={"universeIds": ",".join(ids)}) if ids else None
+    return jsonify(d or {"data": []})
+
+@app.route("/thumbnails/v1/games/icons", methods=["GET"])
+def thumb_game_icons():
+    log_request()
+    d = _get_up("https://thumbnails.roblox.com/v1/games/icons", params=dict(request.args))
+    return jsonify(d or {"data": []})
+
+@app.route("/catalog/v1/search/items/details", methods=["GET"])
+def catalog_details():
+    log_request()
+    args = dict(request.args)
+    try:
+        lim = int(args.get("limit") or args.get("Limit") or 30)
+    except Exception:
+        lim = 30
+    args["Limit"] = 10 if lim <= 10 else (28 if lim <= 28 else 30)
+    args.pop("limit", None)
+    d = _get_up("https://catalog.roblox.com/v1/search/items/details", params=args)
+    return jsonify(d or {"data": [], "nextPageCursor": None, "previousPageCursor": None})
+
+@app.route("/economy/v1/users/<int:uid>/currency", methods=["GET"])
+@app.route("/economy/v1/user/currency", methods=["GET"])
+def economy_currency(uid=1):
+    log_request()
+    return jsonify({"robux": 0})
+
+@app.route("/users/v1/users/authenticated", methods=["GET"])
+def users_auth():
+    log_request()
+    return jsonify({"id": 1, "name": "Player1", "displayName": "Player1"})
+
+@app.route("/users/v1/users/<int:uid>", methods=["GET"])
+def users_one(uid):
+    log_request()
+    return jsonify({"description": "Conta MONTROY", "created": "2026-01-01T00:00:00.000Z", "isBanned": False,
+                    "externalAppDisplayName": None, "hasVerifiedBadge": False, "id": uid,
+                    "name": "Player1", "displayName": "Player1"})
+
+@app.route("/friends/v1/users/<int:uid>/friends", methods=["GET"])
+@app.route("/friends/v1/users/<int:uid>/friends/count", methods=["GET"])
+def friends_list(uid):
+    log_request()
+    if request.path.endswith("/count"):
+        return jsonify({"count": 0})
+    return jsonify({"data": []})
+
+@app.route("/friends/v1/my/friends/count", methods=["GET"])
+def friends_count_me():
+    log_request()
+    return jsonify({"count": 0})
+
+@app.route("/friends/v1/user/friend-requests/count", methods=["GET"])
+def friends_req_count():
+    log_request()
+    return jsonify({"count": 0})
+
+@app.route("/avatar/v1/avatar", methods=["GET"])
+def avatar_me():
+    log_request()
+    return jsonify({"scales": {"height": 1, "width": 1, "head": 1, "depth": 1, "proportion": 0, "bodyType": 0},
+                    "playerAvatarType": "R15",
+                    "bodyColors": {"headColorId": 1001, "torsoColorId": 1001, "rightArmColorId": 1001,
+                                   "leftArmColorId": 1001, "rightLegColorId": 1001, "leftLegColorId": 1001},
+                    "assets": [], "defaultShirtApplied": True, "defaultPantsApplied": True, "emotes": []})
 
 
 # ---------------- catch-all ----------------
